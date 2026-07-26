@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '1.3.0';
+const APP_VER = '1.3.1';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -329,6 +329,7 @@ function heroHtml() {
   '</section>';
 }
 
+let headEmpty = null;                    /* hero-г шаардлагагүйд дахин барихгүйн тулд */
 function renderHead() {
   headEmpty = !items().length;
   let h = items().length ? '' : heroHtml();
