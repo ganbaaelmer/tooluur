@@ -237,25 +237,39 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 }
 .warn__go b{color:var(--brass);font-weight:800}
 
-/* ── сонгосон хэлбэрийн зурвас ── */
-.bar2__mode{
-  width:100%;display:flex;align-items:center;gap:8px;
-  text-align:left;font-size:12.5px;font-weight:700;color:var(--dim);
-  min-height:40px;margin-bottom:12px;
+/* ── хэлбэр солих: тэр дороо, хуудас солихгүйгээр ── */
+.modesw{
+  display:flex;align-items:stretch;gap:4px;margin-bottom:13px;
+  background:var(--bg-soft);border:1px solid var(--line);
+  border-radius:15px;padding:4px;
 }
-.bar2__mode em{
-  font-style:normal;font-size:11px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--dimmer);
+.modesw > button{
+  flex:1;min-width:0;min-height:40px;border-radius:11px;
+  font-size:12.5px;font-weight:700;color:var(--dim);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:background .2s,color .2s;
 }
-.bar2__mode:active{opacity:.6}
+.modesw > button.is-on{background:var(--brass);color:#100D0A}
+.modesw > button:active{opacity:.75}
+.modesw__go{
+  flex:0 0 auto !important;padding:0 12px;
+  color:var(--dimmer) !important;font-size:11.5px !important;
+  border-left:1px solid var(--line);border-radius:0 !important;
+  font-variant-numeric:tabular-nums;
+}
+.modesw__go:active{color:var(--brass) !important}
 
 /* ═══════════════ хүний зурвас ═══════════════ */
 .who{
   display:flex;gap:8px;overflow-x:auto;
-  margin:0 calc(var(--pad) * -1) 14px;padding:2px var(--pad) 8px;
+  margin:0 calc(var(--pad) * -1) 13px;padding:2px var(--pad) 8px;
   scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  /* баруун зах бүдгэрч, гүйлгэх юм байгааг хэлнэ */
+  -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 34px),transparent 100%);
+  mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 34px),transparent 100%);
+  scroll-snap-type:x proximity;
 }
+.who .chip{scroll-snap-align:start}
 .who::-webkit-scrollbar{display:none}
 .who[hidden]{display:none}
 .chip{
@@ -394,6 +408,8 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .undo svg{width:17px;height:17px}
 
 /* ═══════════════ табын зурвас ═══════════════ */
+/* v2.0-д хэтэрхий бүдэг болгосон нь алдаа байсан — энэ бол аппын ГОЛ
+   навигаци, хаана байгаа/хаашаа явахыг хэлж байх ёстой. */
 .tabbar{
   position:fixed;left:0;right:0;bottom:0;z-index:26;
   max-width:600px;margin:0 auto;
@@ -401,25 +417,34 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
   padding:0 var(--sa-r) var(--sa-b) var(--sa-l);
   display:grid;grid-template-columns:repeat(4,1fr);
   background:var(--bg-soft);
-  border-top:1px solid var(--line-2);
+  border-top:1px solid var(--line);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
 }
 .tab{
   position:relative;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  color:var(--dimmer);
-  font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--dim);
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;
   transition:color .2s;
 }
+.tab::before{                       /* сонгогдсоныг гуулин талбайгаар тэмдэглэнэ */
+  content:'';position:absolute;top:5px;bottom:5px;left:50%;
+  width:66px;margin-left:-33px;border-radius:15px;
+  background:transparent;transition:background .22s var(--ease);
+}
+.tab svg,.tab span{position:relative;z-index:1}
 .tab.is-on{color:var(--brass)}
-.tab:active{opacity:.55}
-.tab svg{width:21px;height:21px}
+.tab.is-on::before{background:var(--brass-soft)}
+.tab:active{opacity:.6}
+.tab svg{width:23px;height:23px;stroke-width:1.8}
+.tab.is-on svg{stroke-width:2.1}
 .tab__badge{
-  position:absolute;top:6px;right:calc(50% - 23px);
-  min-width:16px;height:16px;padding:0 4px;border-radius:8px;
+  position:absolute;top:3px;right:calc(50% - 27px);z-index:2;
+  min-width:17px;height:17px;padding:0 4px;border-radius:9px;
   background:var(--brass);color:#100D0A;
-  font-size:9.5px;font-weight:800;letter-spacing:0;
+  font-size:10px;font-weight:800;letter-spacing:0;
   display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;
+  box-shadow:0 0 0 2px var(--bg-soft);
 }
 
 /* ═══════════════ карт ба мөр ═══════════════ */

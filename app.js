@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '2.3.0';
+const APP_VER = '2.4.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -378,14 +378,24 @@ function renderHead() {
 
 /* Сонгосон хэлбэр + үнэ засах товч НЭГ зурваст — хоёр мөр эзлэхгүй.
    Hero харагдаж байхад хэлбэр нь тэнд аль хэдийн байгаа тул давхардуулахгүй. */
-/* Сонгосон хэлбэрийг тоолж байхад сануулах нимгэн зурвас */
+/* Хэлбэрийг ӨӨР ХУУДАС РУУ ОРОХГҮЙГЭЭР тэр дороо солино.
+   Өмнө нь «🙋 Хүн тус бүрээр ›» гэсэн жижиг холбоос байсан — хаашаа авч
+   оддог нь тодорхойгүй, буцаж ирэх нь ч тодорхойгүй байсан. */
 function renderEditbar() {
   if (!items().length) { $('#editbar').innerHTML = ''; return; }
-  const mode = S.session.mode === 'each'
-    ? '🙋 Хүн тус бүрээр'
-    : '🤝 Шэрлэх' + (headCount() ? ' · ' + headCount() + ' хүн' : '');
+  const m = S.session.mode === 'each' ? 'each' : 'even';
+  const sub = m === 'even'
+    ? (headCount() ? headCount() + ' хүнд' : 'хэдүүлээ?')
+    : S.people.length + ' хүн';
   $('#editbar').innerHTML =
-    '<button class="bar2__mode" data-act="goSplit"><em>' + mode + '</em>›</button>';
+    '<div class="modesw">' +
+      '<button data-act="setMode" data-v="even"' + (m === 'even' ? ' class="is-on"' : '') + '>' +
+        '🤝 Шэрлэх</button>' +
+      '<button data-act="setMode" data-v="each"' + (m === 'each' ? ' class="is-on"' : '') + '>' +
+        '🙋 Хүн тус бүрээр</button>' +
+      '<button class="modesw__go" data-act="goSplit" aria-label="Тооцоо харах">' +
+        sub + ' ›</button>' +
+    '</div>';
 }
 
 let gridSig = '';
@@ -585,6 +595,7 @@ function renderSplit() {
     h += '<button class="btn btn--primary" data-act="share">' +
          '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 15v4h14v-4"/></svg>' +
          'Тооцоог найзууддаа илгээх</button>';
+    h += '<button class="btn btn--ghost" data-act="goCount">‹ Тоолох руу буцах</button>';
     h += '<button class="btn hold" data-act="endSession" data-hold="1400">Суултыг хааж хадгалах</button>' +
          '<p class="hold__hint">Удаан дар (1.5 сек)</p>';
   } else {
