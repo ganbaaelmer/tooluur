@@ -4,7 +4,7 @@
      • бусад asset      → stale-while-revalidate (хурдан + өөрөө шинэчлэгдэнэ)
    Дата нь localStorage-д байдаг тул cache цэвэрлэгдэхэд тооцоо алдагдахгүй. */
 
-const VERSION = 'v1.1.1';
+const VERSION = 'v1.2.0';
 const CACHE = 'tooluur-' + VERSION;
 
 const ASSETS = [

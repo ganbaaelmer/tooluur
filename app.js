@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '1.1.1';
+const APP_VER = '1.2.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -63,7 +63,12 @@ const DEFAULT_MENU = [
 
 /* ─────────────────────────── state ─────────────────────────── */
 function blankSession() {
-  return { id: uid(), startedAt: Date.now(), place: '', items: [], claimed: 0, splitShared: true };
+  return {
+    id: uid(), startedAt: Date.now(), place: '', items: [], claimed: 0,
+    mode: 'even',        /* 'even' = шэрлэж тэнцүү хуваах (түгээмэл) | 'each' = хүн тус бүрээр */
+    heads: 0,            /* шэрлэх үед хэдүүлээ байгаа (0 = сонгоогүй) */
+    splitShared: true    /* 'each' үед хамтын юмыг тэнцүү хуваах эсэх */
+  };
 }
 function fresh() {
   return {
@@ -93,6 +98,8 @@ function normalize(s) {
   if (typeof s.session.place !== 'string') s.session.place = '';
   if (typeof s.session.claimed !== 'number') s.session.claimed = 0;
   if (typeof s.session.splitShared !== 'boolean') s.session.splitShared = true;
+  s.session.mode = s.session.mode === 'each' ? 'each' : 'even';
+  s.session.heads = Math.max(0, Math.min(99, Math.floor(Number(s.session.heads) || 0)));
   s.session.items = s.session.items.filter(i => i && i.id).map(i => ({
     id: i.id, ts: Number(i.ts) || Date.now(), drinkId: i.drinkId || '',
     name: i.name || 'Юм', emoji: i.emoji || '🍺', price: Number(i.price) || 0,
@@ -230,32 +237,58 @@ function renderAppbar() {
   $('#sessMeta').innerHTML = timeStr(st) + '-с хойш<br>' + (h ? h + 'ц ' : '') + m + 'м';
 }
 
+/* Дүн солигдоход тоог урсгаж харуулна — юм нэмэгдсэн нь мэдрэгдэнэ.
+   rAF байхгүй/боломжгүй үед ч эцсийн утга нь эхлээд шууд бичигдэнэ. */
+let sumShown = 0, sumRaf = 0;
 function renderTotalbar() {
   const n = items().length;
+  const t = total();
+  const el = $('#tbSum');
   $('#tbCount').textContent = n;
-  $('#tbSum').textContent = (n && !total()) ? '—' : money(total());
+  el.textContent = (n && !t) ? '—' : money(t);
   $('#undoBtn').disabled = n === 0;
   const b = $('#tabLogBadge');
   b.hidden = n === 0; b.textContent = n;
+
+  const from = sumShown;
+  sumShown = t;
+  if (from === t || !t || (n && !t)) return;
+  if (typeof requestAnimationFrame !== 'function') return;
+  const bar = $('#totalbar');
+  if (bar) { bar.classList.remove('bump'); void bar.offsetWidth; bar.classList.add('bump'); }
+  const t0 = performance.now(), dur = 280;
+  cancelAnimationFrame(sumRaf);
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = money(Math.round(from + (t - from) * e));
+    if (p < 1) sumRaf = requestAnimationFrame(step);
+    else el.textContent = money(t);
+  };
+  sumRaf = requestAnimationFrame(step);
 }
 
 /* ── Тоолох ── */
 const HERO =
   '<section class="hero">' +
-    '<h1 class="hero__t">Мартсан ч болно —<br>би санаж байя 🍻</h1>' +
+    '<h1 class="hero__t">Юу захиалснаа<br>мартчихдаг шүү 🍻</h1>' +
     '<p class="hero__p">' +
-      'Юм ирэх болгонд доороос нэг дар. Болоо, өөр юу ч хийхгүй.<br>' +
-      'Хэдэн шил болсныг, хэдэн төгрөг болсныг би хэлж өгнө. ' +
-      'Тооцоо ирэхэд барынхтай тулгаад зөрүү байвал шууд харуулна.' +
+      'Бар, пабд сууж байхад хэдэн шил авсан нь мартагдана. ' +
+      '<b>Юм ирэх болгонд доороос нэг дар</b> — тэгээд л болоо.' +
     '</p>' +
-    '<div class="hero__pills">' +
-      '<span class="pill">Нэвтрэх шаардлагагүй</span>' +
-      '<span class="pill">Интернетгүй ч ажиллана</span>' +
-      '<span class="pill">Дата таны утсанд л байна</span>' +
+    '<div class="hero__ways">' +
+      '<div class="way"><span class="way__e">🤝</span>' +
+        '<b>Шэрлэх</b><span>Нийт дүнг хүний тоонд тэнцүү хуваана</span></div>' +
+      '<div class="way"><span class="way__e">🙋</span>' +
+        '<b>Хүн тус бүрээр</b><span>Хэн юу авсныг тусад нь тооцно</span></div>' +
     '</div>' +
+    '<p class="hero__p hero__p--sm">Хоёуланг «Хуваах» таб дээр сонгоно. ' +
+    'Бүртгэл цаг хугацаатай хадгалагдах тул барын дүнтэй тулгаж зөрүүг барина.</p>' +
   '</section>';
 
+let headEmpty = null;                    /* hero-г шаардлагагүйд дахин барихгүйн тулд */
 function renderHead() {
+  headEmpty = !items().length;
   let h = items().length ? '' : HERO;
   if (!S.settings.pricesSet) {
     h += items().length
@@ -292,8 +325,8 @@ function renderCount() {
   $('#grid').classList.toggle('is-edit', editMode);
 }
 function buildGrid() {
-  $('#grid').innerHTML = S.menu.map(m =>
-    '<div class="tile" data-id="' + esc(m.id) + '" style="--c:' + esc(m.color) + '">' +
+  $('#grid').innerHTML = S.menu.map((m, k) =>
+    '<div class="tile" data-id="' + esc(m.id) + '" style="--c:' + esc(m.color) + ';--i:' + k + '">' +
       '<button class="tile__add" data-act="add" data-long="drink" data-id="' + esc(m.id) + '" ' +
               'aria-label="' + esc(m.name) + ' нэмэх">' +
         '<span class="tile__emoji" aria-hidden="true">' + esc(m.emoji) + '</span>' +
@@ -310,7 +343,7 @@ function buildGrid() {
   ).join('') +
   /* Хүмүүс өөр өөр төрлийн пиво захиалдаг тул шинэ төрөл нэмэх нь
      Цэс таб дотор нуугдалгүй, тоолж байгаа дэлгэцэн дээрээ байх ёстой. */
-  '<div class="tile tile--new">' +
+  '<div class="tile tile--new" style="--i:' + S.menu.length + '">' +
     '<button class="tile__add" data-act="newDrink" aria-label="Шинэ төрөл нэмэх">' +
       '<span class="tile__emoji" aria-hidden="true">＋</span>' +
       '<span class="tile__txt">' +
@@ -330,25 +363,34 @@ function syncGrid() {
 }
 function paint(drinkId) {
   syncGrid(); syncWho(); renderTotalbar();
+  /* Эхний юм нэмэгдмэгц hero нь замаас гарна (эсрэгээр нь ч мөн) */
+  if (headEmpty !== !items().length) renderHead();
   const t = $('#grid .tile[data-id="' + CSS.escape(drinkId) + '"]');
   if (!t) return;
   t.classList.remove('pop');
   void t.offsetWidth;
   t.classList.add('pop');
 }
-/* Chip-ийн тоог DOM-оо дахин барихгүйгээр шинэчилдэг болгосон —
-   ингэснээр товших болгонд хэвтээ scroll нь буцаж үсэрдэггүй. */
+/* Хүний зурвас зөвхөн «хүн тус бүрээр» хэлбэрт л гарна — шэрлэх үед нэр
+   хэрэггүй тул тоолох дэлгэц цэвэр байна.
+   Chip-ийн тоог DOM-оо дахин барихгүйгээр шинэчилдэг — товших болгонд
+   хэвтээ scroll буцаж үсэрдэггүй. */
 const pidOf = c => c.dataset.pid === '-' ? null : c.dataset.pid;
 function renderWho() {
+  const box = $('#who');
+  if (S.session.mode !== 'each') { box.innerHTML = ''; box.hidden = true; return; }
+  box.hidden = false;
   const cur = S.activePerson || null;
-  const chip = (id, label) =>
+  const chip = (id, label, ava, color) =>
     '<button class="chip' + (cur === id ? ' is-on' : '') + '" data-act="who" ' +
-    'data-id="' + esc(id || '') + '" data-pid="' + esc(id || '-') + '">' + label +
+    'data-id="' + esc(id || '') + '" data-pid="' + esc(id || '-') + '">' +
+    '<span class="chip__a" style="--c:' + esc(color) + '">' + ava + '</span>' +
+    '<span class="chip__l">' + label + '</span>' +
     '<span class="chip__n">' + (countFor(id) || '') + '</span></button>';
-  $('#who').innerHTML =
-    chip(null, '🍻 Хамт') +
-    S.people.map(p => chip(p.id, esc(p.name))).join('') +
-    '<button class="chip chip--add" data-act="addPerson">＋ Хүн</button>';
+  box.innerHTML =
+    chip(null, 'Хамт', '🤝', 'var(--dimmer)') +
+    S.people.map(p => chip(p.id, esc(p.name), esc(initial(p.name)), avaColor(p.id))).join('') +
+    '<button class="chip chip--add" data-act="addPerson" aria-label="Хүн нэмэх">＋</button>';
 }
 function syncWho() {
   $$('#who .chip[data-pid]').forEach(c => {
@@ -365,21 +407,33 @@ function renderLog() {
     $('#logWrap').innerHTML = emptyBox('🧾', 'Бүртгэл хоосон.<br>«Тоолох» таб дээр юм нэмэхэд<br>цаг хугацаатайгаа энд бичигдэнэ.');
     return;
   }
-  const rows = its.slice().reverse().map((i, k) =>
-    '<div class="row">' +
+  const each = S.session.mode === 'each';
+  const rows = its.slice().reverse().map((i, k) => {
+    const who = i.personId ? (personById(i.personId) || { name: i.personName || '?' }) : null;
+    const tag = each
+      ? '<button class="lchip' + (who ? ' is-on' : '') + '" data-act="cyclePerson" ' +
+        'data-id="' + esc(i.id) + '">' +
+        (who ? '<span class="lchip__a" style="--c:' + esc(avaColor(i.personId)) + '">' +
+                 esc(initial(who.name)) + '</span>' + esc(who.name)
+             : '🤝 Хамтын') + ' ⇄</button>'
+      : (who ? '<span class="lchip is-static">' + esc(who.name) + '</span>' : '');
+    return '<div class="row">' +
       '<span class="emoji-lg" aria-hidden="true">' + esc(i.emoji) + '</span>' +
       '<div class="row__main">' +
         '<div class="row__t">' + esc(i.name) + '</div>' +
-        '<div class="row__s">' + timeStr(i.ts) + ' · #' + (its.length - k) +
-          (i.personId ? ' · ' + esc((personById(i.personId) || {}).name || i.personName || '') : '') +
-        '</div>' +
+        '<div class="row__s">' + timeStr(i.ts) + ' · #' + (its.length - k) + '</div>' +
+        (tag ? '<div class="row__tag">' + tag + '</div>' : '') +
       '</div>' +
-      '<span class="row__v">' + money(i.price) + '</span>' +
+      '<span class="row__v">' + priceTxt(i.price) + '</span>' +
       '<button class="row__x" data-act="delItem" data-id="' + esc(i.id) + '" aria-label="Устгах">✕</button>' +
-    '</div>'
-  ).join('');
+    '</div>';
+  }).join('');
+
   $('#logWrap').innerHTML =
-    '<p class="sub">Хамгийн шинэ нь дээрээ. Энэ бүртгэл нь цаг хугацаатай учраас барын тооцоотой тулгахад хүчинтэй.</p>' +
+    '<p class="sub">' + (each
+      ? 'Хэн авсныг тэмдэглэхийн тулд <b>нэрэн дээр дар</b> — дарах тоолонд дараагийн хүн болно.'
+      : 'Хамгийн шинэ нь дээрээ. Бүртгэл цаг хугацаатай учраас барын тооцоотой тулгахад хүчинтэй.') +
+    '</p>' +
     '<div class="card">' + rows + '</div>' +
     '<button class="btn btn--ghost" data-act="shareDetail"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 15v4h14v-4"/></svg>Цагийн бүртгэлийг хуулах</button>';
 }
@@ -387,7 +441,12 @@ function emptyBox(e, html) {
   return '<div class="empty"><span class="empty__e">' + e + '</span><p>' + html + '</p></div>';
 }
 
-/* ── Хуваах ── */
+/* ── Хуваах ──
+   Хоёр хэрэгцээ:
+     1) ШЭРЛЭХ (түгээмэл) — нийт дүнг хүний тоонд тэнцүү хуваана. Нэр хэрэггүй,
+        зөвхөн «хэдүүлээ» гэдэг тоо. Нэг товшилтоор сонгоно.
+     2) ХҮН ТУС БҮРЭЭР (хааяа) — хэн юу авсныг тусад нь тооцно.
+   Тиймээс default нь шэрлэх, хүний нэр зөвхөн 2-р хэлбэрт л гарна. */
 function splitData() {
   const per = S.people.map(p => ({ id: p.id, name: p.name, n: 0, sum: 0 }));
   let sharedN = 0, sharedSum = 0;
@@ -400,62 +459,146 @@ function splitData() {
   const share = (S.session.splitShared && heads) ? sharedSum / heads : 0;
   return { per, sharedN, sharedSum, share, heads, total: total() };
 }
+
+/* Шэрлэх үед хэдүүлээ байгаа тоо */
+function headCount() {
+  const h = Number(S.session.heads) || 0;
+  return h > 0 ? h : 0;
+}
+
 function renderSplit() {
-  const d = splitData();
   if (!items().length) {
-    $('#splitWrap').innerHTML = emptyBox('🧮', 'Тооцоо хоосон байна.<br>Эхлээд юм нэмээрэй.');
+    $('#splitWrap').innerHTML = emptyBox('🧮',
+      'Одоохондоо юу ч тоолоогүй.<br>«Тоолох» таб дээр юм нэмээд ирээрэй.');
     return;
   }
-  let h = '<div class="big"><div class="big__l">Бидний тоолсон</div>' +
-          '<div class="big__v">' + money(d.total) + '</div>' +
-          '<div class="big__s">' + items().length + ' юм · ' + timeStr(S.session.startedAt) + '–' +
-          timeStr(items()[items().length - 1].ts) + '</div></div>';
+  const mode = S.session.mode === 'each' ? 'each' : 'even';
+  const t = total();
+  const last = items()[items().length - 1].ts;
 
+  let h = '';
+
+  /* нийт дүн */
+  h += '<div class="big big--hero"><div class="big__l">Нийт</div>' +
+       '<div class="big__v">' + (t ? money(t) : '—') + '</div>' +
+       '<div class="big__s">' + items().length + ' юм · ' +
+       timeStr(S.session.startedAt) + '–' + timeStr(last) + '</div></div>';
+
+  /* хэлбэр сонгох */
+  h += '<div class="seg seg--big">' +
+    '<button data-act="setMode" data-v="even"' + (mode === 'even' ? ' class="is-on"' : '') + '>' +
+      '🤝 Шэрлэх</button>' +
+    '<button data-act="setMode" data-v="each"' + (mode === 'each' ? ' class="is-on"' : '') + '>' +
+      '🙋 Хүн тус бүрээр</button>' +
+  '</div>';
+
+  h += mode === 'even' ? splitEvenHtml(t) : splitEachHtml();
+
+  /* барын дүнтэй тулгах */
   h += '<div class="card"><div class="card__h">Барын тооцоотой тулгах</div><div class="card__b">' +
        '<div class="field"><label class="field__l" for="claimed">Тэдний бичсэн дүн</label>' +
        '<input class="inp inp--num" id="claimed" inputmode="numeric" autocomplete="off" ' +
        'placeholder="0" value="' + (S.session.claimed ? nf(S.session.claimed) : '') + '"></div>' +
        '<div id="diffBox">' + diffHtml() + '</div></div></div>';
 
-  if (d.heads) {
-    h += '<div class="card"><div class="card__h">Хүн тус бүр</div>';
-    h += d.per.map(p =>
-      '<div class="row"><div class="row__main"><div class="row__t">' + esc(p.name) + '</div>' +
-      '<div class="row__s">' + p.n + ' юм' + (d.share ? ' + хамтын ' + money(d.share) : '') + '</div></div>' +
-      '<span class="row__v">' + money(p.sum + d.share) + '</span></div>'
-    ).join('');
-    if (d.sharedN) {
-      h += '<div class="row"><div class="row__main"><div class="row__t">🍻 Хамтын</div>' +
-           '<div class="row__s">' + d.sharedN + ' юм' +
-           (S.session.splitShared ? ' · ' + d.heads + ' хүнд тэнцүү хуваасан' : ' · хуваагаагүй') +
-           '</div></div><span class="row__v">' + money(d.sharedSum) + '</span></div>';
-      h += '<div class="switch' + (S.session.splitShared ? ' is-on' : '') + '" data-act="toggleSplit">' +
-           '<div class="switch__main"><div class="row__t">Хамтын юмыг тэнцүү хуваах</div>' +
-           '<div class="row__s">' + d.heads + ' хүнд ' + money(d.sharedSum / d.heads) + ' тус бүр</div></div>' +
-           '<span class="switch__box"></span></div>';
-    }
-    h += '</div>';
-  } else {
-    h += '<div class="card"><div class="card__b"><p class="sub" style="margin:0">Хүнээр хуваах бол «Тоолох» таб дээрх <b>＋ Хүн</b> дарж найзуудаа нэмээд, юм нэмэхийн өмнө хэн болохыг сонго.</p></div></div>';
-  }
-
-  h += '<div class="card"><div class="card__h">Тооцоогоор</div>';
-  const groups = groupItems(items());
-  h += groups.map(g =>
-    '<div class="row"><span class="emoji-lg" aria-hidden="true">' + esc(g.emoji) + '</span>' +
-    '<div class="row__main"><div class="row__t">' + esc(g.name) + '</div>' +
-    '<div class="row__s">' + money(g.price) + ' × ' + g.n + '</div></div>' +
-    '<span class="row__v">' + money(g.price * g.n) + '</span></div>'
-  ).join('') + '</div>';
-
   h += '<button class="btn btn--primary" data-act="share">' +
        '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 15v4h14v-4"/></svg>' +
        'Тооцоог найзууддаа илгээх</button>';
-  h += '<button class="btn hold" data-act="endSession" data-hold="1400">Суултыг хааж түүхэнд хадгалах</button>' +
+  h += '<button class="btn hold" data-act="endSession" data-hold="1400">Суултыг хааж хадгалах</button>' +
        '<p class="hold__hint">Удаан дар (1.5 сек)</p>';
 
   $('#splitWrap').innerHTML = h;
 }
+
+/* ── 1. Шэрлэх ── */
+function splitEvenHtml(t) {
+  const n = headCount();
+  const pick = [2,3,4,5,6,7,8].map(k =>
+    '<button data-act="setHeads" data-v="' + k + '"' + (n === k ? ' class="is-on"' : '') + '>' +
+    k + '</button>').join('');
+
+  let h = '<div class="card"><div class="card__h">Хэдүүлээ байна?</div><div class="card__b">' +
+    '<div class="heads">' + pick +
+      (n > 8 ? '<button class="is-on" data-act="headsStep" data-v="0">' + n + '</button>'
+             : '<button data-act="setHeads" data-v="9" aria-label="Илүү">9+</button>') +
+    '</div>';
+  if (n > 8) {
+    h += '<div class="stepper2">' +
+      '<button data-act="headsStep" data-v="-1" aria-label="Хасах">−</button>' +
+      '<span class="stepper2__v">' + n + ' хүн</span>' +
+      '<button data-act="headsStep" data-v="1" aria-label="Нэмэх">＋</button></div>';
+  }
+  h += '</div></div>';
+
+  if (!n) {
+    h += '<p class="sub" style="text-align:center">Хэдүүлээ байгааг дарвал хүн тутамд ' +
+         'хэдэн төгрөг болохыг шууд гаргана.</p>';
+    return h;
+  }
+
+  const each = t / n;
+  const rounded = Math.ceil(each / 100) * 100;      /* 100₮ дээш бөөрөнхийлнө */
+  h += '<div class="big big--pay"><div class="big__l">Хүн тутамд</div>' +
+       '<div class="big__v">' + money(rounded) + '</div>' +
+       '<div class="big__s">' + n + ' хүн × ' + money(rounded) + ' = ' + money(rounded * n) +
+       (rounded * n !== t ? ' <span class="dimmer">(' + money(rounded * n - t) + ' үлдэнэ)</span>' : '') +
+       '</div></div>';
+  return h;
+}
+
+/* ── 2. Хүн тус бүрээр ── */
+function splitEachHtml() {
+  const d = splitData();
+  if (!d.heads) {
+    return '<div class="card"><div class="card__b">' +
+      '<p class="sub">Хэн хэн байгааг нэмээд, «Тоолох» таб дээр юм авахын өмнө ' +
+      'хэн болохыг дараарай. Мартсан ч болно — «Лог» таб дээрээс дараа нь хуваарилж болно.</p>' +
+      '<button class="btn btn--primary" data-act="addPerson">＋ Хүн нэмэх</button></div></div>';
+  }
+  let h = '<div class="card"><div class="card__h">Хэн хэдийг төлөх</div>';
+  h += d.per.map(p =>
+    '<div class="row"><span class="ava" style="--c:' + esc(avaColor(p.id)) + '">' +
+      esc(initial(p.name)) + '</span>' +
+    '<div class="row__main"><button class="row__t row__t--tap" data-act="renamePerson" data-id="' +
+      esc(p.id) + '">' + esc(p.name) + ' ✎</button>' +
+    '<div class="row__s">' + p.n + ' юм' +
+      (d.share ? ' + хамтын ' + money(d.share) : '') + '</div></div>' +
+    '<span class="row__v">' + money(p.sum + d.share) + '</span>' +
+    '<button class="row__x" data-act="delPerson" data-id="' + esc(p.id) + '" ' +
+      'aria-label="Хасах">✕</button></div>'
+  ).join('');
+  h += '<div class="row row--tap" data-act="addPerson"><span class="ava ava--add">＋</span>' +
+       '<div class="row__main"><div class="row__t">Хүн нэмэх</div></div></div>';
+  if (d.sharedN) {
+    h += '<div class="row"><span class="ava ava--all">🤝</span>' +
+      '<div class="row__main"><div class="row__t">Хамтын</div>' +
+      '<div class="row__s">' + d.sharedN + ' юм · ' +
+      (S.session.splitShared ? d.heads + ' хүнд тэнцүү' : 'хуваагаагүй') + '</div></div>' +
+      '<span class="row__v">' + money(d.sharedSum) + '</span></div>';
+    h += '<div class="switch' + (S.session.splitShared ? ' is-on' : '') + '" data-act="toggleSplit">' +
+      '<div class="switch__main"><div class="row__t">Хамтын юмыг тэнцүү хуваах</div>' +
+      '<div class="row__s">' + money(d.sharedSum / d.heads) + ' тус бүр</div></div>' +
+      '<span class="switch__box"></span></div>';
+  }
+  h += '</div>';
+
+  const named = d.per.reduce((a, p) => a + p.sum, 0);
+  if (!named && d.sharedSum) {
+    h += '<p class="sub" style="text-align:center">Бүх юм «Хамтын» байна. «Лог» таб дээр ' +
+         'бүртгэл дарж хэн авсныг тэмдэглэ.</p>';
+  }
+  return h;
+}
+
+const AVA = ['#ffb020','#8ab4ff','#ff7ab8','#34d399','#c084fc','#fb923c','#22d3ee','#f5d90a'];
+function avaColor(id) {
+  const i = S.people.findIndex(p => p.id === id);
+  return AVA[(i < 0 ? 0 : i) % AVA.length];
+}
+function initial(name) {
+  return String(name || '?').trim().charAt(0).toUpperCase() || '?';
+}
+
 function diffHtml() {
   const c = Number(S.session.claimed) || 0;
   if (!c) return '<p class="sub" style="margin:0">Барнаас гарсан дүнг бичихэд зөрүүг харуулна.</p>';
@@ -511,12 +654,19 @@ function renderMenu() {
 
   h += '<div class="card"><div class="card__h">Хүмүүс</div>' +
     (S.people.length ? S.people.map(p =>
-      '<div class="row"><div class="row__main"><div class="row__t">' + esc(p.name) + '</div>' +
-      '<div class="row__s">' + countFor(p.id) + ' юм · ' + money(sum(items().filter(i => i.personId === p.id))) + '</div></div>' +
-      '<button class="row__x" data-act="delPerson" data-id="' + esc(p.id) + '" aria-label="Устгах">✕</button></div>'
-    ).join('') : '<div class="row"><div class="row__main"><div class="row__s">Хүн нэмээгүй. Бүх юм «Хамт» гэж бүртгэгдэнэ.</div></div></div>') +
-    '<div class="row row--tap" data-act="addPerson"><span class="emoji-lg">＋</span>' +
-    '<div class="row__main"><div class="row__t">Хүн нэмэх</div></div></div></div>';
+      '<div class="row row--tap" data-act="renamePerson" data-id="' + esc(p.id) + '">' +
+      '<span class="ava" style="--c:' + esc(avaColor(p.id)) + '">' + esc(initial(p.name)) + '</span>' +
+      '<div class="row__main"><div class="row__t">' + esc(p.name) + ' ✎</div>' +
+      '<div class="row__s">' + countFor(p.id) + ' юм · ' +
+      money(sum(items().filter(i => i.personId === p.id))) + '</div></div>' +
+      '<button class="row__x" data-act="delPerson" data-id="' + esc(p.id) + '" aria-label="Хасах">✕</button></div>'
+    ).join('')
+    : '<div class="row"><div class="row__main"><div class="row__s">Хүн нэмээгүй. ' +
+      'Шэрлэж хуваахад хүний нэр хэрэггүй — «Хуваах» таб дээр хэдүүлээ байгааг л дарна.' +
+      '</div></div></div>') +
+    '<div class="row row--tap" data-act="addPerson"><span class="ava ava--add">＋</span>' +
+    '<div class="row__main"><div class="row__t">Хүн нэмэх</div>' +
+    '<div class="row__s">Хүн тус бүрээр тооцох бол</div></div></div></div>';
 
   h += '<div class="card"><div class="card__h">Тохиргоо</div>' +
     '<div class="card__b"><span class="field__l">Өнгө</span>' +
@@ -653,12 +803,21 @@ function commitDrink() {
   return true;
 }
 
-function sheetPerson() {
-  openSheet('Хүн нэмэх',
-    '<div class="field"><label class="field__l" for="pName">Нэр</label>' +
-    '<input class="inp" id="pName" placeholder="Батаа" autocomplete="off" enterkeyhint="done"></div>' +
-    '<button class="btn btn--primary" data-act="savePerson">Нэмэх</button>');
-  setTimeout(() => $('#pName') && $('#pName').focus(), 320);
+function sheetPerson(id) {
+  const p = personById(id);
+  if (!p) return;
+  openSheet('Нэрийг солих',
+    '<div class="field"><input class="inp" id="pName" value="' + esc(p.name) + '" ' +
+    'placeholder="Батаа" autocomplete="off" enterkeyhint="done" maxlength="16"></div>' +
+    '<button class="btn btn--primary" data-act="savePerson">Болсон</button>' +
+    '<button class="btn hold btn--danger" data-act="delPerson" data-id="' + esc(p.id) + '" ' +
+    'data-hold="1200">Хасах</button>' +
+    '<p class="hold__hint">Удаан дар. Түүний авсан юм «Хамтын» болно, дүн алдагдахгүй.</p>',
+    { personId: p.id });
+  setTimeout(() => {
+    const el = $('#pName');
+    if (el) { el.focus(); if (el.select) el.select(); }
+  }, 320);
 }
 
 function sheetPlace() {
@@ -722,15 +881,25 @@ function summaryText(sess, people) {
   L.push('─────────────');
   L.push('НИЙТ: ' + its.length + ' юм · ' + money(sum(its)));
   const ppl = people || [];
-  if (ppl.length) {
-    const per = ppl.map(p => ({ name: p.name, id: p.id, sum: sum(its.filter(i => i.personId === p.id)), n: its.filter(i => i.personId === p.id).length }));
+  if (sess.mode === 'each' && ppl.length) {
+    const per = ppl.map(p => ({
+      name: p.name, id: p.id,
+      sum: sum(its.filter(i => i.personId === p.id)),
+      n: its.filter(i => i.personId === p.id).length
+    }));
     const sharedSum = sum(its.filter(i => !i.personId));
-    const share = sess.splitShared && ppl.length ? sharedSum / ppl.length : 0;
-    if (per.some(p => p.n) || sharedSum) {
+    const share = sess.splitShared ? sharedSum / ppl.length : 0;
+    L.push('');
+    L.push('🙋 Хүн тус бүрээр:');
+    per.forEach(p => L.push('  ' + p.name + ': ' + money(p.sum + share) + (p.n ? ' (' + p.n + ' юм)' : '')));
+    if (sharedSum) L.push('  🤝 Хамтын: ' + money(sharedSum) +
+      (share ? ' → ' + money(share) + ' тус бүр' : ''));
+  } else {
+    const n = Math.max(0, Math.min(99, Math.floor(Number(sess.heads) || 0)));
+    if (n > 1) {
+      const each = Math.ceil((sum(its) / n) / 100) * 100;
       L.push('');
-      L.push('👥 Хүнээр:');
-      per.forEach(p => L.push('  ' + p.name + ': ' + money(p.sum + share) + (p.n ? ' (' + p.n + ' юм)' : '')));
-      if (sharedSum) L.push('  Хамтын: ' + money(sharedSum) + (share ? ' → ' + money(share) + ' тус бүр' : ''));
+      L.push('🤝 ' + n + ' хүн шэрлэвэл: ' + money(each) + ' тус бүр');
     }
   }
   if (sess.claimed) {
@@ -789,21 +958,67 @@ const ACT = {
     $$('#who .chip[data-pid]').forEach(c => c.classList.toggle('is-on', pidOf(c) === S.activePerson));
   },
 
-  /* people */
-  addPerson: () => sheetPerson(),
+  /* people — нэмэхэд юу ч бичихгүй, шууд нэмэгдэнэ. Нэрийг дараа дарж сольно. */
+  addPerson: () => {
+    if (S.people.length >= 12) { toast('12 хүнээс их болохгүй'); return; }
+    const p = { id: uid(), name: S.people.length ? 'Хүн ' + (S.people.length + 1) : 'Би' };
+    S.people.push(p);
+    S.activePerson = p.id;
+    S.session.mode = 'each';
+    save(); haptic(14); closeSheet(); refresh();
+    toast('👤 ' + p.name + ' — нэрэн дээр дарж сольж болно');
+  },
+  renamePerson: el => sheetPerson(el.dataset.id),
   savePerson: () => {
-    const v = ($('#pName') && $('#pName').value || '').trim();
+    const v = (($('#pName') && $('#pName').value) || '').trim().slice(0, 16);
     if (!v) { toast('Нэр бичээрэй'); return; }
-    const p = { id: uid(), name: v.slice(0, 24) };
-    S.people.push(p); S.activePerson = p.id; save(); closeSheet(); refresh();
-    toast('👤 ' + p.name + ' нэмэгдлээ — одоо түүний юмыг тоолж болно');
+    const p = personById(sheetCtx && sheetCtx.personId);
+    if (p) {
+      p.name = v;
+      items().forEach(i => { if (i.personId === p.id) i.personName = v; });
+    }
+    save(); closeSheet(); refresh();
   },
   delPerson: el => {
     const p = personById(el.dataset.id); if (!p) return;
     items().forEach(i => { if (i.personId === p.id) { i.personId = null; i.personName = null; } });
     S.people = S.people.filter(x => x.id !== p.id);
     if (S.activePerson === p.id) S.activePerson = null;
-    save(); refresh(); toast(p.name + ' хасагдлаа. Түүний юм «Хамт» болов.');
+    save(); closeSheet(); refresh();
+    toast(p.name + ' хасагдлаа. Түүний юм «Хамтын» болов.');
+  },
+
+  /* хуваах хэлбэр */
+  setMode: el => {
+    const v = el.dataset.v === 'each' ? 'each' : 'even';
+    S.session.mode = v;
+    if (v === 'each' && !S.people.length) {
+      S.people.push({ id: uid(), name: 'Би' }, { id: uid(), name: 'Хүн 2' });
+      S.activePerson = S.people[0].id;
+    }
+    /* Шэрлэх үед хүний зурвас нуугддаг тул сонголт нь үзэгдэхгүй хэвээр
+       үлдэж, юм нь нэг хүн дээр далд бичигдэхээс сэргийлнэ. */
+    if (v === 'even') S.activePerson = null;
+    save(); haptic(14); refresh();
+  },
+  setHeads: el => {
+    S.session.heads = Math.max(0, Math.min(99, Number(el.dataset.v) || 0));
+    save(); haptic(14); renderSplit();
+  },
+  headsStep: el => {
+    S.session.heads = Math.max(0, Math.min(99, headCount() + Number(el.dataset.v)));
+    save(); haptic(10); renderSplit();
+  },
+  /* Лог дээр нэр дарахад дараагийн хүн болно — модалгүй, нэг товшилт */
+  cyclePerson: el => {
+    const it = items().find(i => i.id === el.dataset.id);
+    if (!it) return;
+    const order = [null].concat(S.people.map(p => p.id));
+    const nx = order[(order.indexOf(it.personId || null) + 1) % order.length];
+    it.personId = nx;
+    it.personName = nx ? ((personById(nx) || {}).name || null) : null;
+    save(); haptic(10);
+    renderLog(); renderTotalbar();
   },
 
   /* place */
