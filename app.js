@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '2.0.0';
+const APP_VER = '2.1.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -73,6 +73,7 @@ function blankSession() {
 function fresh() {
   return {
     v: 1, menu: clone(DEFAULT_MENU), people: [], activePerson: null,
+    recent: [],          /* өмнө бичсэн нэрс — дараа дарахад л болно */
     session: blankSession(), archive: [],
     settings: { theme: 'dark', haptics: true, pricesSet: false }
   };
@@ -90,6 +91,9 @@ function normalize(s) {
     if (!m.name) m.name = 'Юм';
   });
   s.people = Array.isArray(s.people) ? s.people.filter(p => p && p.id && p.name) : [];
+  s.recent = Array.isArray(s.recent)
+    ? s.recent.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 16)).slice(0, 12)
+    : [];
   s.archive = Array.isArray(s.archive) ? s.archive : [];
   s.settings = Object.assign(d.settings, s.settings || {});
   if (!s.session || !Array.isArray(s.session.items)) s.session = d.session;
@@ -323,8 +327,17 @@ function heroHtml() {
           : '<p class="setup__s">Одоо дарж болно, дараа ч болно.</p>') +
         '</div>'
       : '<div class="setup"><span class="setup__l">Хэн хэн байна?</span>' +
-        '<p class="setup__s">Доорх зурваснаас хүнээ нэмээд, юм авахын өмнө ' +
-        '<b>хэн болохыг дар</b>. Мартсан ч болно — «Лог» таб дээрээс дараа нь тэмдэглэж болно.</p>' +
+        (S.people.length
+          ? '<div class="pchips">' + S.people.map(p =>
+              '<span class="pchip pchip--ro"><span class="pchip__a" style="--c:' +
+              esc(avaColor(p.id)) + '">' + esc(initial(p.name)) + '</span>' +
+              esc(p.name) + '</span>').join('') + '</div>' +
+            '<p class="setup__s">Юм авахын өмнө <b>хэн болохыг дар</b>. Мартсан ч болно — ' +
+            '«Лог» таб дээрээс дараа нь тэмдэглэж болно.</p>'
+          : '<p class="setup__s">Нэр нэмээд л явцгаая. Бичсэн нэрийг санаж авах тул ' +
+            'дараагийн удаа дарахад л болно.</p>') +
+        '<button class="btn' + (S.people.length ? '' : ' btn--primary') +
+        '" data-act="addPerson">＋ Хүн нэмэх</button>' +
         '</div>') +
   '</section>';
 }
@@ -847,6 +860,85 @@ function commitDrink() {
   return true;
 }
 
+/* Хүн нэмэх — нэрийг бичээд Enter дарахад ШУУД нэмэгдэж, гар хаагдалгүй
+   дараагийнхыг бичиж болно. 3 найзыг нэмэхэд 3 удаа модал онгойлгож хаах
+   шаардлагагүй. Өмнө нь нэмсэн нэрс «хурдан нэмэх» болж хадгалагдах тул
+   хоёр дахь удаагаас бичих шаардлагагүй — зөвхөн дарна. */
+function sheetPeople() {
+  openSheet('Хэн хэн байна?',
+    '<p class="sub">Нэрийг бичээд <b>Enter</b> дар. Гар хаагдахгүй — дараагийнхыг ' +
+    'шууд бичээд л явна.</p>' +
+    '<div class="addrow">' +
+      '<input class="inp" id="pAdd" placeholder="Батаа" autocomplete="off" ' +
+      'autocapitalize="words" enterkeyhint="done" maxlength="16">' +
+      '<button data-act="addPersonName" aria-label="Нэмэх">＋</button>' +
+    '</div>' +
+    '<div id="pList"></div>' +
+    '<div id="pRecent"></div>' +
+    '<button class="btn btn--primary" data-act="closeSheet">Болсон</button>');
+  renderPeopleSheet();
+  setTimeout(() => { const el = $('#pAdd'); if (el) el.focus(); }, 330);
+}
+
+function renderPeopleSheet() {
+  const list = $('#pList');
+  if (list) {
+    list.innerHTML = S.people.length
+      ? '<p class="field__l">' + S.people.length + ' хүн</p><div class="pchips">' +
+        S.people.map(p =>
+          '<button class="pchip" data-act="rmPerson" data-id="' + esc(p.id) + '">' +
+          '<span class="pchip__a" style="--c:' + esc(avaColor(p.id)) + '">' +
+          esc(initial(p.name)) + '</span>' + esc(p.name) + '<i>✕</i></button>').join('') +
+        '</div>'
+      : '';
+  }
+  const rec = $('#pRecent');
+  if (rec) {
+    const have = S.people.map(p => p.name.toLowerCase());
+    const opts = ['Би'].concat(S.recent || [])
+      .filter((n, i, a) => a.indexOf(n) === i && have.indexOf(n.toLowerCase()) < 0)
+      .slice(0, 10);
+    rec.innerHTML = opts.length
+      ? '<p class="field__l">Хурдан нэмэх</p><div class="quick">' +
+        opts.map(n => '<button data-act="addRecent" data-v="' + esc(n) + '">＋ ' +
+        esc(n) + '</button>').join('') + '</div>'
+      : '';
+  }
+}
+
+/* Бичсэн нэрийг санаж, дараагийн шөнө дарахад л болдог болгоно */
+function rememberName(n) {
+  const r = (S.recent || []).filter(x => x.toLowerCase() !== n.toLowerCase());
+  r.unshift(n);
+  S.recent = r.slice(0, 12);
+}
+
+function addPersonNamed(name) {
+  const v = String(name || '').trim().slice(0, 16);
+  if (!v) return null;
+  if (S.people.length >= 12) { toast('12 хүнээс их болохгүй'); return null; }
+  if (S.people.some(p => p.name.toLowerCase() === v.toLowerCase())) {
+    toast(v + ' аль хэдийн байна'); return null;
+  }
+  const p = { id: uid(), name: v };
+  S.people.push(p);
+  if (!S.activePerson) S.activePerson = p.id;
+  S.session.mode = 'each';
+  rememberName(v);
+  save(); haptic(12);
+  return p;
+}
+
+function removePerson(id) {
+  const p = personById(id);
+  if (!p) return null;
+  items().forEach(i => { if (i.personId === p.id) { i.personId = null; i.personName = null; } });
+  S.people = S.people.filter(x => x.id !== p.id);
+  if (S.activePerson === p.id) S.activePerson = S.people.length ? S.people[0].id : null;
+  save();
+  return p;
+}
+
 function sheetPerson(id) {
   const p = personById(id);
   if (!p) return;
@@ -1002,15 +1094,23 @@ const ACT = {
     $$('#who .chip[data-pid]').forEach(c => c.classList.toggle('is-on', pidOf(c) === S.activePerson));
   },
 
-  /* people — нэмэхэд юу ч бичихгүй, шууд нэмэгдэнэ. Нэрийг дараа дарж сольно. */
-  addPerson: () => {
-    if (S.people.length >= 12) { toast('12 хүнээс их болохгүй'); return; }
-    const p = { id: uid(), name: S.people.length ? 'Хүн ' + (S.people.length + 1) : 'Би' };
-    S.people.push(p);
-    S.activePerson = p.id;
-    S.session.mode = 'each';
-    save(); haptic(14); closeSheet(); refresh();
-    toast('👤 ' + p.name + ' — нэрэн дээр дарж сольж болно');
+  /* people */
+  addPerson: () => sheetPeople(),
+  addPersonName: () => {
+    const el = $('#pAdd');
+    if (!el) return;
+    const p = addPersonNamed(el.value);
+    el.value = '';
+    if (p) { refresh(); renderPeopleSheet(); }
+    if (el.focus) el.focus();          /* гар хаагдалгүй дараагийнхыг бичнэ */
+  },
+  addRecent: el => {
+    if (addPersonNamed(el.dataset.v)) { refresh(); renderPeopleSheet(); }
+    const i = $('#pAdd'); if (i && i.focus) i.focus();
+  },
+  rmPerson: el => {
+    const p = removePerson(el.dataset.id);
+    if (p) { refresh(); renderPeopleSheet(); }
   },
   renamePerson: el => sheetPerson(el.dataset.id),
   savePerson: () => {
@@ -1024,11 +1124,9 @@ const ACT = {
     save(); closeSheet(); refresh();
   },
   delPerson: el => {
-    const p = personById(el.dataset.id); if (!p) return;
-    items().forEach(i => { if (i.personId === p.id) { i.personId = null; i.personName = null; } });
-    S.people = S.people.filter(x => x.id !== p.id);
-    if (S.activePerson === p.id) S.activePerson = null;
-    save(); closeSheet(); refresh();
+    const p = removePerson(el.dataset.id);
+    if (!p) return;
+    closeSheet(); refresh();
     toast(p.name + ' хасагдлаа. Түүний юм «Хамтын» болов.');
   },
 
@@ -1036,19 +1134,13 @@ const ACT = {
   setMode: el => {
     const v = el.dataset.v === 'each' ? 'each' : 'even';
     S.session.mode = v;
-    if (v === 'each') {
-      if (!S.people.length) {
-        S.people.push({ id: uid(), name: 'Би' }, { id: uid(), name: 'Хүн 2' });
-      }
-      /* Хэн ч сонгогдоогүй бол товшилт «Хамтын» болж, «хүн тус бүрээр» гэдэг
-         нь утгагүй болно. Тиймээс эхний хүнийг сонгож тавина — chip нь
-         тодруулж харуулах бөгөөд «Лог» дээрээс дараа нь солиж болно. */
-      if (!S.activePerson) S.activePerson = S.people[0].id;
-    }
     /* Шэрлэх үед хүний зурвас нуугддаг тул сонголт нь үзэгдэхгүй хэвээр
        үлдэж, юм нь нэг хүн дээр далд бичигдэхээс сэргийлнэ. */
     if (v === 'even') S.activePerson = null;
+    /* Хэн ч сонгогдоогүй бол товшилт «Хамтын» болж хэлбэр нь утгагүй болно */
+    if (v === 'each' && !S.activePerson && S.people.length) S.activePerson = S.people[0].id;
     save(); haptic(14); refresh();
+    if (v === 'each' && !S.people.length) { sheetPeople(); return; }
     toast(v === 'even'
       ? '🤝 Шэрлэх — хэдүүлээ байгааг дараарай'
       : '🙋 Хүн тус бүрээр — юм авахын өмнө хэнийг дар');
@@ -1223,6 +1315,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('#sheet').hidden) { closeSheet(); return; }
   if (e.key !== 'Enter') return;
   const id = e.target && e.target.id;
+  if (id === 'pAdd') { ACT.addPersonName(); return; }   /* Enter → шууд нэмнэ */
   if (id === 'pName') ACT.savePerson();
   else if (id === 'plName') ACT.savePlace();
   else if (id === 'dName') e.target.blur();   /* үнийг keypad-аар бичнэ */

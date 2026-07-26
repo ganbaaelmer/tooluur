@@ -567,6 +567,36 @@ html[data-theme="light"] .big--pay .big__l{color:var(--brass)}
 .pad button:active{transform:scale(.95);background:var(--brass);color:#100D0A;border-color:var(--brass)}
 .pad button.pad--sm{font-size:16px;font-weight:700;color:var(--dim)}
 
+/* нэр нэмэх мөр: [оролт][＋] */
+.addrow{display:flex;gap:9px;margin-bottom:16px}
+.addrow .inp{flex:1;min-width:0}
+.addrow button{
+  flex:0 0 56px;border-radius:var(--r);
+  background:var(--brass);color:#100D0A;
+  font-size:22px;font-weight:400;line-height:1;
+  transition:transform .12s var(--ease),background .16s;
+}
+.addrow button:active{transform:scale(.95);background:var(--brass-2)}
+
+/* нэмэгдсэн хүмүүс */
+.pchips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.pchip{
+  display:inline-flex;align-items:center;gap:8px;
+  min-height:42px;padding:0 12px 0 4px;border-radius:21px;
+  border:1px solid var(--line);background:var(--card);
+  font-size:14px;font-weight:700;color:var(--fg);
+  transition:transform .12s var(--ease),border-color .18s;
+}
+.pchip:active{transform:scale(.95);border-color:var(--bad)}
+.pchip i{font-style:normal;font-size:11px;color:var(--dimmer);margin-left:2px}
+.pchip:active i{color:var(--bad)}
+.pchip--ro{padding:0 13px 0 4px}
+.pchip--ro:active{transform:none;border-color:var(--line)}
+.pchip__a{
+  width:32px;height:32px;border-radius:50%;background:var(--c);color:#100D0A;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;
+}
+
 /* хурдан нэрс */
 .quick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
 .quick button{
