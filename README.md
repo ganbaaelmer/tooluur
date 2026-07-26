@@ -65,34 +65,14 @@ git push -u origin main
 
 ### 2. Pages-ыг залгах
 
-**Settings → Pages → Build and deployment → Source: `Deploy from a branch`
-→ Branch: `main`, folder: `/ (root)`**
+**Settings → Pages → Build and deployment → Source: `GitHub Actions`** (аль хэдийн тохируулагдсан)
 
-Push хийх болгонд GitHub өөрөө шинэчилнэ. `.nojekyll` болон `CNAME` root-д
-байгаа тул нэмэлт тохиргоо шаардахгүй.
+`.github/workflows/pages.yml` нь `main` руу push хийх болгонд өөрөө deploy хийнэ.
+Тэр workflow нь сайтад хэрэгтэй файлыг **нэрээр нь** `_site/` руу хуулдаг
+allowlist хэлбэрээр бичигдсэн — `.env`, `ARCHITECTURE 2.md`, `.claude-memory/`
+зэрэг дотоод файл web-д хэзээ ч гарахгүй.
 
-<details>
-<summary><b>GitHub Actions-аар deploy болгох (зөвлөж байна, token шинэчилсний дараа)</b></summary>
 
-Branch deploy нь repo-д байгаа **бүх** файлыг web-д гаргадаг
-(`tooluur.website/ARCHITECTURE%202.md` гэх мэт). Actions-аар deploy хийвэл
-зөвхөн сайтын файл л гарна — илүү цэвэр, санамсаргүй leak-ээс хамгаална.
-
-Үүнд `workflow` scope-той token хэрэгтэй (classic PAT-д `repo` дээр нэмж
-`workflow` шалгана). Token шинэчлэхдээ тэрийг сонгоод:
-
-```bash
-mkdir -p .github/workflows
-cp deploy/pages-workflow.yml.example .github/workflows/pages.yml
-git add .github/workflows/pages.yml
-git commit -m "ci: Pages deploy workflow"
-git push
-```
-
-Дараа нь **Settings → Pages → Source: `GitHub Actions`** болгож сольвол болно.
-(Эсвэл GitHub web UI-гаас `.github/workflows/pages.yml` файлыг шууд үүсгэж
-болно — web UI-д token scope хамаарахгүй.)
-</details>
 
 ### 3. Домэйн: `tooluur.website` (Namecheap)
 
@@ -179,7 +159,7 @@ manifest.webmanifest     PWA манифест (standalone, portrait)
 icons/                   icon.svg + 192/512/180/maskable PNG
 CNAME                    tooluur.website  ← GitHub Pages домэйн
 .nojekyll                Jekyll-ийг хаана
-deploy/                  Actions deploy workflow (бэлэн, залгахад л үлдсэн)
+.github/workflows/       Pages deploy — зөвхөн сайтын файлыг ачаална
 .claude-memory/          шийдвэр, progress, gotcha, schema (багт хуваалцана)
 .env.example             .env-ийн placeholder — бодит .env commit ХИЙХГҮЙ
 ```
