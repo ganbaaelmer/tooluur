@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '1.1.0';
+const APP_VER = '1.1.1';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -242,13 +242,16 @@ function renderTotalbar() {
 /* ── Тоолох ── */
 const HERO =
   '<section class="hero">' +
-    '<h1 class="hero__t">Хэдэн шил уусныг хэн санана?</h1>' +
-    '<p class="hero__p">Бар санана. Тэгээд хоёр гурвыг илүү бичнэ.<br>' +
-    'Авах болгондоо доор нэг дар. Тооцоо ирэхэд тэдний дүнтэй тулгаад зөрүүг хараарай.</p>' +
+    '<h1 class="hero__t">Мартсан ч болно —<br>би санаж байя 🍻</h1>' +
+    '<p class="hero__p">' +
+      'Юм ирэх болгонд доороос нэг дар. Болоо, өөр юу ч хийхгүй.<br>' +
+      'Хэдэн шил болсныг, хэдэн төгрөг болсныг би хэлж өгнө. ' +
+      'Тооцоо ирэхэд барынхтай тулгаад зөрүү байвал шууд харуулна.' +
+    '</p>' +
     '<div class="hero__pills">' +
-      '<span class="pill">Нэвтрэхгүй</span>' +
-      '<span class="pill">Интернетгүй ажиллана</span>' +
-      '<span class="pill">Дата зөвхөн таны утсанд</span>' +
+      '<span class="pill">Нэвтрэх шаардлагагүй</span>' +
+      '<span class="pill">Интернетгүй ч ажиллана</span>' +
+      '<span class="pill">Дата таны утсанд л байна</span>' +
     '</div>' +
   '</section>';
 
@@ -262,9 +265,9 @@ function renderHead() {
         '</div>'
       : '<div class="warn">' +
           '<button class="warn__x" data-act="pricesOk" aria-label="Хаах">✕</button>' +
-          '<p class="warn__t">⚠️ Үнэ нь таамаг</p>' +
-          '<p class="warn__p">Доорх үнэ бол зүгээр нэг дундаж тоо. Барынхаараа ' +
-          'тааруулаагүй бол тооцоо ч буруу гарна. 30 секундын ажил.</p>' +
+          '<p class="warn__t">⚠️ Доорх үнэ бол зүгээр таамаг</p>' +
+          '<p class="warn__p">Байгаа барынхаараа тааруулчихвал тооцоо зөв гарна. ' +
+          '30 секундын ажил — нэг дараад л явчихна.</p>' +
           '<button class="btn btn--primary" data-act="setupPrices">✎ Үнээ тохируулах</button>' +
         '</div>';
   }
