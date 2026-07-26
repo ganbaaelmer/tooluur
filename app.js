@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '1.2.0';
+const APP_VER = '1.3.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -269,27 +269,78 @@ function renderTotalbar() {
 }
 
 /* ── Тоолох ── */
-const HERO =
-  '<section class="hero">' +
-    '<h1 class="hero__t">Юу захиалснаа<br>мартчихдаг шүү 🍻</h1>' +
-    '<p class="hero__p">' +
-      'Бар, пабд сууж байхад хэдэн шил авсан нь мартагдана. ' +
-      '<b>Юм ирэх болгонд доороос нэг дар</b> — тэгээд л болоо.' +
-    '</p>' +
-    '<div class="hero__ways">' +
-      '<div class="way"><span class="way__e">🤝</span>' +
-        '<b>Шэрлэх</b><span>Нийт дүнг хүний тоонд тэнцүү хуваана</span></div>' +
-      '<div class="way"><span class="way__e">🙋</span>' +
-        '<b>Хүн тус бүрээр</b><span>Хэн юу авсныг тусад нь тооцно</span></div>' +
-    '</div>' +
-    '<p class="hero__p hero__p--sm">Хоёуланг «Хуваах» таб дээр сонгоно. ' +
-    'Бүртгэл цаг хугацаатай хадгалагдах тул барын дүнтэй тулгаж зөрүүг барина.</p>' +
-  '</section>';
+/* Хоёр төлбөрийн хэлбэрийг сонгох карт — hero болон «Хуваах» таб хоёуланд
+   ижил компонентоор гарна. Карт бол ЖИНХЭНЭ товч: дарвал хэлбэр солигдоно.
+   (v1.2-д зөвхөн зураг байсан тул дарахад юу ч болдоггүй байв.) */
+function modeCardsHtml() {
+  const m = S.session.mode === 'each' ? 'each' : 'even';
+  const card = (v, e, t, s) =>
+    '<button class="way' + (m === v ? ' is-on' : '') + '" data-act="setMode" data-v="' + v + '">' +
+      '<span class="way__e">' + e + '</span>' +
+      '<span class="way__t">' + t + '</span>' +
+      '<span class="way__s">' + s + '</span>' +
+      '<span class="way__tick">✓</span>' +
+    '</button>';
+  return '<div class="ways">' +
+    card('even', '🤝', 'Шэрлэх', 'Нийт дүнг хүний тоонд тэнцүү хуваана') +
+    card('each', '🙋', 'Хүн тус бүрээр', 'Хэн юу авсныг тусад нь тооцно') +
+  '</div>';
+}
 
-let headEmpty = null;                    /* hero-г шаардлагагүйд дахин барихгүйн тулд */
+/* Хэдүүлээ байгааг нэг товшилтоор — hero болон «Хуваах» таб хоёуланд */
+function headsPickHtml() {
+  const n = headCount();
+  let h = '<div class="heads">' +
+    [2,3,4,5,6,7,8].map(k =>
+      '<button data-act="setHeads" data-v="' + k + '"' + (n === k ? ' class="is-on"' : '') + '>' +
+      k + '</button>').join('') +
+    (n > 8 ? '<button class="is-on" data-act="headsStep" data-v="0">' + n + '</button>'
+           : '<button data-act="setHeads" data-v="9" aria-label="Илүү">9+</button>') +
+  '</div>';
+  if (n > 8) {
+    h += '<div class="stepper2">' +
+      '<button data-act="headsStep" data-v="-1" aria-label="Хасах">−</button>' +
+      '<span class="stepper2__v">' + n + ' хүн</span>' +
+      '<button data-act="headsStep" data-v="1" aria-label="Нэмэх">＋</button></div>';
+  }
+  return h;
+}
+
+function heroHtml() {
+  const even = S.session.mode !== 'each';
+  return '<section class="hero">' +
+    '<h1 class="hero__t">Юу захиалж авснаа<br>мартдаг шүүдээ 🍻</h1>' +
+    '<p class="hero__p">Бар, пабд сууж байхад юу авсан нь мартагддаг. ' +
+      'Захиалга ирэх болгонд <b>доорхоос нэг дараад л яв</b> — хялбархан бүртгэгдээд ' +
+      'байна. Дахиж тооцоо дээр толгой өвдөхгүй.</p>' +
+    '<p class="hero__lead">Доорх 2 төрлөөр тооцоогоо бодож болно:</p>' +
+    modeCardsHtml() +
+    (even
+      ? '<div class="setup"><span class="setup__l">Хэдүүлээ байна?</span>' +
+        headsPickHtml() +
+        (headCount() ? '<p class="setup__ok">✓ ' + headCount() +
+            ' хүнд тэнцүү хуваана. Одоо тоолж эхэл.</p>'
+          : '<p class="setup__s">Одоо дарж болно, дараа ч болно.</p>') +
+        '</div>'
+      : '<div class="setup"><span class="setup__l">Хэн хэн байна?</span>' +
+        '<p class="setup__s">Доорх зурваснаас хүнээ нэмээд, юм авахын өмнө ' +
+        '<b>хэн болохыг дар</b>. Мартсан ч болно — «Лог» таб дээрээс дараа нь тэмдэглэж болно.</p>' +
+        '</div>') +
+  '</section>';
+}
+
 function renderHead() {
   headEmpty = !items().length;
-  let h = items().length ? '' : HERO;
+  let h = items().length ? '' : heroHtml();
+  /* Юм тоолж эхэлсний дараа ч ямар хэлбэр сонгосон нь харагдана */
+  if (items().length) {
+    h += S.session.mode === 'each'
+      ? '<button class="modebar" data-act="goSplit">🙋 <b>Хүн тус бүрээр</b>' +
+        '<span>юм авахын өмнө хэн болохыг дар</span><i>›</i></button>'
+      : '<button class="modebar" data-act="goSplit">🤝 <b>Шэрлэх</b><span>' +
+        (headCount() ? headCount() + ' хүнд тэнцүү хуваана' : 'хэдүүлээ байгааг сонгоогүй') +
+        '</span><i>›</i></button>';
+  }
   if (!S.settings.pricesSet) {
     h += items().length
       ? '<div class="warn warn--slim">' +
@@ -467,87 +518,76 @@ function headCount() {
 }
 
 function renderSplit() {
-  if (!items().length) {
-    $('#splitWrap').innerHTML = emptyBox('🧮',
-      'Одоохондоо юу ч тоолоогүй.<br>«Тоолох» таб дээр юм нэмээд ирээрэй.');
-    return;
-  }
-  const mode = S.session.mode === 'each' ? 'each' : 'even';
+  const n = items().length;
   const t = total();
-  const last = items()[items().length - 1].ts;
-
+  const mode = S.session.mode === 'each' ? 'each' : 'even';
   let h = '';
 
-  /* нийт дүн */
-  h += '<div class="big big--hero"><div class="big__l">Нийт</div>' +
-       '<div class="big__v">' + (t ? money(t) : '—') + '</div>' +
-       '<div class="big__s">' + items().length + ' юм · ' +
-       timeStr(S.session.startedAt) + '–' + timeStr(last) + '</div></div>';
+  if (n) {
+    h += '<div class="big big--hero"><div class="big__l">Нийт</div>' +
+         '<div class="big__v">' + (t ? money(t) : '—') + '</div>' +
+         '<div class="big__s">' + n + ' юм · ' + timeStr(S.session.startedAt) + '–' +
+         timeStr(items()[n - 1].ts) + '</div></div>';
+  } else {
+    h += '<div class="big big--hero"><div class="big__l">Нийт</div>' +
+         '<div class="big__v dimmer">0₮</div>' +
+         '<div class="big__s">Юм тоолоогүй байна — доор тохируулаад ор</div></div>';
+  }
 
-  /* хэлбэр сонгох */
-  h += '<div class="seg seg--big">' +
-    '<button data-act="setMode" data-v="even"' + (mode === 'even' ? ' class="is-on"' : '') + '>' +
-      '🤝 Шэрлэх</button>' +
-    '<button data-act="setMode" data-v="each"' + (mode === 'each' ? ' class="is-on"' : '') + '>' +
-      '🙋 Хүн тус бүрээр</button>' +
-  '</div>';
+  /* Хэлбэр сонгох нь ҮРГЭЛЖ харагдана (юм тоолоогүй ч) */
+  h += '<p class="card__h card__h--free">Тооцоог хэрхэн бодох вэ?</p>';
+  h += modeCardsHtml();
 
-  h += mode === 'even' ? splitEvenHtml(t) : splitEachHtml();
+  h += mode === 'even' ? splitEvenHtml(t, n) : splitEachHtml(n);
 
-  /* барын дүнтэй тулгах */
-  h += '<div class="card"><div class="card__h">Барын тооцоотой тулгах</div><div class="card__b">' +
-       '<div class="field"><label class="field__l" for="claimed">Тэдний бичсэн дүн</label>' +
-       '<input class="inp inp--num" id="claimed" inputmode="numeric" autocomplete="off" ' +
-       'placeholder="0" value="' + (S.session.claimed ? nf(S.session.claimed) : '') + '"></div>' +
-       '<div id="diffBox">' + diffHtml() + '</div></div></div>';
+  if (n) {
+    h += '<div class="card"><div class="card__h">Барын тооцоотой тулгах</div><div class="card__b">' +
+         '<div class="field"><label class="field__l" for="claimed">Тэдний бичсэн дүн</label>' +
+         '<input class="inp inp--num" id="claimed" inputmode="numeric" autocomplete="off" ' +
+         'placeholder="0" value="' + (S.session.claimed ? nf(S.session.claimed) : '') + '"></div>' +
+         '<div id="diffBox">' + diffHtml() + '</div></div></div>';
 
-  h += '<button class="btn btn--primary" data-act="share">' +
-       '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 15v4h14v-4"/></svg>' +
-       'Тооцоог найзууддаа илгээх</button>';
-  h += '<button class="btn hold" data-act="endSession" data-hold="1400">Суултыг хааж хадгалах</button>' +
-       '<p class="hold__hint">Удаан дар (1.5 сек)</p>';
+    h += '<button class="btn btn--primary" data-act="share">' +
+         '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 15v4h14v-4"/></svg>' +
+         'Тооцоог найзууддаа илгээх</button>';
+    h += '<button class="btn hold" data-act="endSession" data-hold="1400">Суултыг хааж хадгалах</button>' +
+         '<p class="hold__hint">Удаан дар (1.5 сек)</p>';
+  } else {
+    h += '<button class="btn btn--primary" data-act="goCount">🍺 Тоолж эхлэх</button>';
+  }
 
   $('#splitWrap').innerHTML = h;
 }
 
 /* ── 1. Шэрлэх ── */
-function splitEvenHtml(t) {
-  const n = headCount();
-  const pick = [2,3,4,5,6,7,8].map(k =>
-    '<button data-act="setHeads" data-v="' + k + '"' + (n === k ? ' class="is-on"' : '') + '>' +
-    k + '</button>').join('');
-
+function splitEvenHtml(t, n) {
+  const heads = headCount();
   let h = '<div class="card"><div class="card__h">Хэдүүлээ байна?</div><div class="card__b">' +
-    '<div class="heads">' + pick +
-      (n > 8 ? '<button class="is-on" data-act="headsStep" data-v="0">' + n + '</button>'
-             : '<button data-act="setHeads" data-v="9" aria-label="Илүү">9+</button>') +
-    '</div>';
-  if (n > 8) {
-    h += '<div class="stepper2">' +
-      '<button data-act="headsStep" data-v="-1" aria-label="Хасах">−</button>' +
-      '<span class="stepper2__v">' + n + ' хүн</span>' +
-      '<button data-act="headsStep" data-v="1" aria-label="Нэмэх">＋</button></div>';
-  }
-  h += '</div></div>';
+    headsPickHtml() + '</div></div>';
 
-  if (!n) {
-    h += '<p class="sub" style="text-align:center">Хэдүүлээ байгааг дарвал хүн тутамд ' +
-         'хэдэн төгрөг болохыг шууд гаргана.</p>';
+  if (!heads) {
+    h += '<p class="sub sub--c">Хэдүүлээ байгааг дарвал хүн тутамд хэдэн төгрөг ' +
+         'болохыг шууд гаргана.</p>';
     return h;
   }
-
-  const each = t / n;
-  const rounded = Math.ceil(each / 100) * 100;      /* 100₮ дээш бөөрөнхийлнө */
+  if (!n || !t) {
+    h += '<div class="big big--pay"><div class="big__l">Хүн тутамд</div>' +
+         '<div class="big__v dimmer">—</div>' +
+         '<div class="big__s">' + heads + ' хүнд тэнцүү хуваахад бэлэн. ' +
+         'Юм тоолмогц дүн гарна.</div></div>';
+    return h;
+  }
+  const each = Math.ceil((t / heads) / 100) * 100;      /* 100₮ дээш бөөрөнхийлнө */
   h += '<div class="big big--pay"><div class="big__l">Хүн тутамд</div>' +
-       '<div class="big__v">' + money(rounded) + '</div>' +
-       '<div class="big__s">' + n + ' хүн × ' + money(rounded) + ' = ' + money(rounded * n) +
-       (rounded * n !== t ? ' <span class="dimmer">(' + money(rounded * n - t) + ' үлдэнэ)</span>' : '') +
+       '<div class="big__v">' + money(each) + '</div>' +
+       '<div class="big__s">' + heads + ' × ' + money(each) + ' = ' + money(each * heads) +
+       (each * heads !== t ? ' <span class="dimmer">(' + money(each * heads - t) + ' үлдэнэ)</span>' : '') +
        '</div></div>';
   return h;
 }
 
 /* ── 2. Хүн тус бүрээр ── */
-function splitEachHtml() {
+function splitEachHtml(n) {
   const d = splitData();
   if (!d.heads) {
     return '<div class="card"><div class="card__b">' +
@@ -582,10 +622,12 @@ function splitEachHtml() {
   }
   h += '</div>';
 
-  const named = d.per.reduce((a, p) => a + p.sum, 0);
-  if (!named && d.sharedSum) {
-    h += '<p class="sub" style="text-align:center">Бүх юм «Хамтын» байна. «Лог» таб дээр ' +
-         'бүртгэл дарж хэн авсныг тэмдэглэ.</p>';
+  if (!n) {
+    h += '<p class="sub sub--c">Хүнээ нэмээд «Тоолох» таб дээр юм авахын өмнө ' +
+         'хэн болохыг дар.</p>';
+  } else if (!d.per.reduce((a, p) => a + p.sum, 0) && d.sharedSum) {
+    h += '<p class="sub sub--c">Бүх юм «Хамтын» болж байна. «Лог» таб дээр бүртгэлийн ' +
+         'нэрэн дээр дарж хэн авсныг тэмдэглэ.</p>';
   }
   return h;
 }
@@ -992,23 +1034,35 @@ const ACT = {
   setMode: el => {
     const v = el.dataset.v === 'each' ? 'each' : 'even';
     S.session.mode = v;
-    if (v === 'each' && !S.people.length) {
-      S.people.push({ id: uid(), name: 'Би' }, { id: uid(), name: 'Хүн 2' });
-      S.activePerson = S.people[0].id;
+    if (v === 'each') {
+      if (!S.people.length) {
+        S.people.push({ id: uid(), name: 'Би' }, { id: uid(), name: 'Хүн 2' });
+      }
+      /* Хэн ч сонгогдоогүй бол товшилт «Хамтын» болж, «хүн тус бүрээр» гэдэг
+         нь утгагүй болно. Тиймээс эхний хүнийг сонгож тавина — chip нь
+         тодруулж харуулах бөгөөд «Лог» дээрээс дараа нь солиж болно. */
+      if (!S.activePerson) S.activePerson = S.people[0].id;
     }
     /* Шэрлэх үед хүний зурвас нуугддаг тул сонголт нь үзэгдэхгүй хэвээр
        үлдэж, юм нь нэг хүн дээр далд бичигдэхээс сэргийлнэ. */
     if (v === 'even') S.activePerson = null;
     save(); haptic(14); refresh();
+    toast(v === 'even'
+      ? '🤝 Шэрлэх — хэдүүлээ байгааг дараарай'
+      : '🙋 Хүн тус бүрээр — юм авахын өмнө хэнийг дар');
   },
   setHeads: el => {
     S.session.heads = Math.max(0, Math.min(99, Number(el.dataset.v) || 0));
-    save(); haptic(14); renderSplit();
+    save(); haptic(14);
+    if (view === 'count') renderHead(); else renderSplit();
   },
   headsStep: el => {
     S.session.heads = Math.max(0, Math.min(99, headCount() + Number(el.dataset.v)));
-    save(); haptic(10); renderSplit();
+    save(); haptic(10);
+    if (view === 'count') renderHead(); else renderSplit();
   },
+  goSplit: () => setView('split'),
+  goCount: () => setView('count'),
   /* Лог дээр нэр дарахад дараагийн хүн болно — модалгүй, нэг товшилт */
   cyclePerson: el => {
     const it = items().find(i => i.id === el.dataset.id);

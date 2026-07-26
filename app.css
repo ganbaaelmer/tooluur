@@ -347,17 +347,57 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .big--pay .big__l{color:var(--fg);opacity:.75}
 .dimmer{color:var(--dimmer)}
 
-/* Хоёр хэлбэрийн тайлбар (hero) */
-.hero__ways{display:grid;gap:9px;margin:16px 0 14px}
-@media (min-width:460px){.hero__ways{grid-template-columns:1fr 1fr}}
+/* Хоёр хэлбэрийн сонголт — ЖИНХЭНЭ товч (hero ба Хуваах таб хоёуланд) */
+.ways{display:grid;gap:10px;margin:0 0 14px}
+@media (min-width:470px){.ways{grid-template-columns:1fr 1fr}}
 .way{
-  display:grid;grid-template-columns:34px 1fr;grid-template-rows:auto auto;
-  gap:2px 10px;align-items:center;
-  background:var(--card);border:1px solid var(--line);border-radius:15px;padding:12px 14px;
+  position:relative;text-align:left;
+  display:grid;grid-template-columns:38px 1fr;grid-template-rows:auto auto;
+  gap:3px 11px;align-items:center;
+  background:var(--card);border:2px solid var(--line);border-radius:18px;
+  padding:15px 44px 15px 15px;min-height:80px;
+  transition:transform .1s cubic-bezier(.2,.8,.3,1),border-color .18s,background .18s;
 }
-.way__e{grid-row:1/3;font-size:24px;text-align:center}
-.way b{font-size:15.5px;font-weight:750}
-.way span:not(.way__e){font-size:13.5px;color:var(--dim);line-height:1.4}
+.way:active{transform:scale(.975)}
+.way__e{grid-row:1/3;font-size:27px;text-align:center}
+.way__t{font-size:16.5px;font-weight:800}
+.way__s{font-size:13.5px;color:var(--dim);line-height:1.4}
+.way__tick{
+  position:absolute;top:50%;right:14px;transform:translateY(-50%) scale(.5);
+  width:26px;height:26px;border-radius:50%;
+  background:var(--accent);color:#0a0c10;font-size:15px;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .18s,transform .18s cubic-bezier(.2,.9,.3,1);
+}
+.way.is-on{border-color:var(--accent);background:var(--card-hi)}
+.way.is-on .way__t{color:var(--accent)}
+.way.is-on .way__tick{opacity:1;transform:translateY(-50%) scale(1)}
+
+/* Тохируулгын хэсэг (hero дотор) */
+.setup{
+  background:var(--card);border:1px solid var(--line);border-radius:18px;
+  padding:15px;margin-bottom:4px;
+}
+.setup__l{display:block;font-size:12.5px;font-weight:750;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--dimmer);margin-bottom:11px}
+.setup__s{margin:11px 0 0;font-size:13.5px;color:var(--dim);line-height:1.5}
+.setup__s b{color:var(--fg)}
+.setup__ok{margin:11px 0 0;font-size:14px;font-weight:700;color:var(--ok)}
+
+/* Сонгосон хэлбэрийг тоолж байхад ч сануулах зурвас */
+.modebar{
+  width:100%;display:flex;align-items:center;gap:9px;
+  background:var(--card);border:1px solid var(--line);border-radius:15px;
+  padding:12px 14px;margin-bottom:12px;min-height:56px;
+  font-size:14px;color:var(--dim);text-align:left;
+}
+.modebar:active{background:var(--card-hi)}
+.modebar b{font-size:14.5px;color:var(--fg);font-weight:750;white-space:nowrap}
+.modebar span{flex:1;font-size:13px;color:var(--dim);line-height:1.35}
+.modebar i{font-style:normal;font-size:20px;color:var(--dimmer)}
+
+.card__h--free{margin:2px 0 10px;padding:0 2px}
+.sub--c{text-align:center}
 
 /* ─────────── buttons ─────────── */
 .btn{
