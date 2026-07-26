@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '2.2.0';
+const APP_VER = '2.3.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -133,6 +133,20 @@ const items = () => S.session.items;
 const total = () => sum(items());
 const countOf = id => items().reduce((a, i) => a + (i.drinkId === id ? 1 : 0), 0);
 const countFor = pid => items().reduce((a, i) => a + ((i.personId || null) === pid ? 1 : 0), 0);
+const sumFor = pid => sum(items().filter(i => (i.personId || null) === pid));
+/* Хүн ТӨЛӨХ дүн = өөрийнх + хамтынхаас эзлэх хувь. Чип дээр энэ гарах тул
+   «хэн хэдийг төлөх» гэдэг нь гол дэлгэц дээрээ үргэлж харагдана. */
+const payFor = pid => {
+  if (!pid) return sumFor(null);
+  const sh = (S.session.splitShared && S.people.length) ? sumFor(null) / S.people.length : 0;
+  return sumFor(pid) + sh;
+};
+/* «Хүн тус бүрээр» үед хавтангийн тоо нь СОНГОСОН хүний тоо байх ёстой —
+   эс тэгвэл бүх хүнийг нийлүүлсэн тоо гарч, салгасны нь утга үгүй болно. */
+const countOfFor = (id, pid) =>
+  items().reduce((a, i) => a + (i.drinkId === id && (i.personId || null) === pid ? 1 : 0), 0);
+const tileCount = id => S.session.mode === 'each'
+  ? countOfFor(id, S.activePerson || null) : countOf(id);
 const personById = id => S.people.find(p => p.id === id) || null;
 
 /* ───────────────────────── feedback ───────────────────────── */
@@ -180,8 +194,16 @@ function removeItem(id, silent) {
   refresh();
   return it;
 }
+/* «Хүн тус бүрээр» үед − нь СОНГОСОН хүний сүүлчийнхийг хасна */
 function removeLastOf(drinkId) {
-  for (let i = items().length - 1; i >= 0; i--) if (items()[i].drinkId === drinkId) return removeItem(items()[i].id);
+  const each = S.session.mode === 'each';
+  const pid = S.activePerson || null;
+  for (let i = items().length - 1; i >= 0; i--) {
+    const it = items()[i];
+    if (it.drinkId !== drinkId) continue;
+    if (each && (it.personId || null) !== pid) continue;
+    return removeItem(it.id);
+  }
   return null;
 }
 function undoLast() {
@@ -408,11 +430,17 @@ function buildGrid() {
   '</div>';
 }
 function syncGrid() {
+  const each = S.session.mode === 'each';
+  const col = each && S.activePerson ? avaColor(S.activePerson) : '';
   $$('#grid .tile[data-id]').forEach(t => {
-    const n = countOf(t.dataset.id);
+    const n = tileCount(t.dataset.id);
     t.classList.toggle('has', n > 0);
     const c = $('.tile__count', t);
-    if (c && c.textContent !== String(n)) c.textContent = n;
+    if (c) {
+      if (c.textContent !== String(n)) c.textContent = n;
+      /* тоо нь сонгосон хүний өнгөөр гарах тул «хэний тоо» гэдэг нь илэрхий */
+      c.style.setProperty('--cnt', col || 'var(--brass)');
+    }
   });
 }
 function paint(drinkId) {
@@ -436,12 +464,14 @@ function renderWho() {
   if (S.session.mode !== 'each') { box.innerHTML = ''; box.hidden = true; return; }
   box.hidden = false;
   const cur = S.activePerson || null;
+  /* Чип дээр тухайн хүний ДҮН гарна — «хэн хэдийг төлөх» нь гол дэлгэц
+     дээрээ, ямар ч таб солихгүйгээр үргэлж харагдана. */
   const chip = (id, label, ava, color) =>
     '<button class="chip' + (cur === id ? ' is-on' : '') + '" data-act="who" ' +
     'data-id="' + esc(id || '') + '" data-pid="' + esc(id || '-') + '">' +
     '<span class="chip__a" style="--c:' + esc(color) + '">' + ava + '</span>' +
     '<span class="chip__l">' + label + '</span>' +
-    '<span class="chip__n">' + (countFor(id) || '') + '</span></button>';
+    '<span class="chip__n">' + (payFor(id) ? money(Math.round(payFor(id))) : '') + '</span></button>';
   box.innerHTML =
     chip(null, 'Хамт', '🤝', 'var(--dimmer)') +
     S.people.map(p => chip(p.id, esc(p.name), esc(initial(p.name)), avaColor(p.id))).join('') +
@@ -449,9 +479,10 @@ function renderWho() {
 }
 function syncWho() {
   $$('#who .chip[data-pid]').forEach(c => {
-    const s = $('.chip__n', c);
-    const n = String(countFor(pidOf(c)) || '');
-    if (s && s.textContent !== n) s.textContent = n;
+    const el = $('.chip__n', c);
+    const v = payFor(pidOf(c));
+    const t = v ? money(Math.round(v)) : '';
+    if (el && el.textContent !== t) el.textContent = t;
   });
 }
 
@@ -590,46 +621,83 @@ function splitEvenHtml(t, n) {
   return h;
 }
 
-/* ── 2. Хүн тус бүрээр ── */
+/* ── 2. Хүн тус бүрээр ──
+   Хүн бүр нь ТУСДАА баримт: нэр, авсан юмс (эмодзи × тоо), төлөх дүн.
+   «Хэн хэдийг төлөх» гэдэг асуултад нэг харцаар хариулна. */
 function splitEachHtml(n) {
   const d = splitData();
   if (!d.heads) {
     return '<div class="card"><div class="card__b">' +
-      '<p class="sub">Хэн хэн байгааг нэмээд, «Тоолох» таб дээр юм авахын өмнө ' +
-      'хэн болохыг дараарай. Мартсан ч болно — «Лог» таб дээрээс дараа нь хуваарилж болно.</p>' +
+      '<p class="sub">Хэн хэн байгааг нэмээд, юм авахын өмнө хэн болохыг дараарай. ' +
+      'Мартсан ч болно — «Лог» таб дээрээс дараа нь хуваарилж болно.</p>' +
       '<button class="btn btn--primary" data-act="addPerson">＋ Хүн нэмэх</button></div></div>';
   }
-  let h = '<div class="card"><div class="card__h">Хэн хэдийг төлөх</div>';
-  h += d.per.map(p =>
-    '<div class="row"><span class="ava" style="--c:' + esc(avaColor(p.id)) + '">' +
-      esc(initial(p.name)) + '</span>' +
-    '<div class="row__main"><button class="row__t row__t--tap" data-act="renamePerson" data-id="' +
-      esc(p.id) + '">' + esc(p.name) + ' ✎</button>' +
-    '<div class="row__s">' + p.n + ' юм' +
-      (d.share ? ' + хамтын ' + money(d.share) : '') + '</div></div>' +
-    '<span class="row__v">' + money(p.sum + d.share) + '</span>' +
-    '<button class="row__x" data-act="delPerson" data-id="' + esc(p.id) + '" ' +
-      'aria-label="Хасах">✕</button></div>'
+
+  /* Бөөрөнхийлсөн дүнгээр ажиллаж, нийлбэрийг эцэст нь тулгана */
+  const rows = d.per.map(p => {
+    const own = groupItems(items().filter(i => i.personId === p.id));
+    const pay = Math.round(p.sum + d.share);
+    return { p, own, pay };
+  });
+  const paid = rows.reduce((a, r) => a + r.pay, 0) +
+               (d.share ? 0 : d.sharedSum);
+
+  let h = '<p class="card__h card__h--free">Хэн хэдийг төлөх</p><div class="card">';
+  h += rows.map(r =>
+    '<div class="prow">' +
+      '<span class="ava" style="--c:' + esc(avaColor(r.p.id)) + '">' +
+        esc(initial(r.p.name)) + '</span>' +
+      '<div class="prow__main">' +
+        '<button class="prow__n" data-act="renamePerson" data-id="' + esc(r.p.id) + '">' +
+          esc(r.p.name) + ' <i>✎</i></button>' +
+        (r.own.length
+          ? '<div class="prow__items">' + r.own.map(g =>
+              '<span class="ig" title="' + esc(g.name) + '">' + esc(g.emoji) +
+              '<b>' + g.n + '</b></span>').join('') + '</div>'
+          : '<div class="prow__none">юу ч аваагүй</div>') +
+        (d.share ? '<div class="prow__sh">өөрийн ' + money(r.p.sum) +
+                   ' + хамтын ' + money(d.share) + '</div>' : '') +
+      '</div>' +
+      '<div class="prow__v">' + money(r.pay) + '</div>' +
+      '<button class="row__x" data-act="delPerson" data-id="' + esc(r.p.id) + '" ' +
+        'aria-label="Хасах">✕</button>' +
+    '</div>'
   ).join('');
-  h += '<div class="row row--tap" data-act="addPerson"><span class="ava ava--add">＋</span>' +
-       '<div class="row__main"><div class="row__t">Хүн нэмэх</div></div></div>';
+
   if (d.sharedN) {
-    h += '<div class="row"><span class="ava ava--all">🤝</span>' +
-      '<div class="row__main"><div class="row__t">Хамтын</div>' +
-      '<div class="row__s">' + d.sharedN + ' юм · ' +
-      (S.session.splitShared ? d.heads + ' хүнд тэнцүү' : 'хуваагаагүй') + '</div></div>' +
-      '<span class="row__v">' + money(d.sharedSum) + '</span></div>';
+    const sh = groupItems(items().filter(i => !i.personId));
+    h += '<div class="prow prow--all">' +
+      '<span class="ava ava--all">🤝</span>' +
+      '<div class="prow__main"><div class="prow__n">Хамтын</div>' +
+        '<div class="prow__items">' + sh.map(g =>
+          '<span class="ig">' + esc(g.emoji) + '<b>' + g.n + '</b></span>').join('') + '</div>' +
+        '<div class="prow__sh">' + (S.session.splitShared
+          ? d.heads + ' хүнд ' + money(d.share) + ' тус бүр'
+          : 'хуваагаагүй — хэн ч төлөөгүй') + '</div>' +
+      '</div>' +
+      '<div class="prow__v' + (S.session.splitShared ? ' dimmer' : '') + '">' +
+        money(d.sharedSum) + '</div></div>';
     h += '<div class="switch' + (S.session.splitShared ? ' is-on' : '') + '" data-act="toggleSplit">' +
       '<div class="switch__main"><div class="row__t">Хамтын юмыг тэнцүү хуваах</div>' +
-      '<div class="row__s">' + money(d.sharedSum / d.heads) + ' тус бүр</div></div>' +
+      '<div class="row__s">' + (S.session.splitShared
+        ? 'дээрх дүнд аль хэдийн орсон' : 'хэний ч дүнд ороогүй') + '</div></div>' +
       '<span class="switch__box"></span></div>';
   }
+  h += '<div class="row row--tap" data-act="addPerson"><span class="ava ava--add">＋</span>' +
+       '<div class="row__main"><div class="row__t">Хүн нэмэх</div></div></div>';
   h += '</div>';
 
+  /* тулгалт — хэсгүүдийн нийлбэр нийт дүнтэй таарч байгаа эсэх */
+  const t = total();
+  h += '<p class="sub sub--c">' + (paid === t
+      ? 'Нийлбэр ' + money(paid) + ' — нийт дүнтэй таарч байна ✓'
+      : 'Нийлбэр ' + money(paid) + ' · нийт ' + money(t) +
+        ' <span class="dimmer">(бөөрөнхийлөлтөөс ' + money(Math.abs(paid - t)) + ' зөрүү)</span>') +
+    '</p>';
+
   if (!n) {
-    h += '<p class="sub sub--c">Хүнээ нэмээд «Тоолох» таб дээр юм авахын өмнө ' +
-         'хэн болохыг дар.</p>';
-  } else if (!d.per.reduce((a, p) => a + p.sum, 0) && d.sharedSum) {
+    h += '<p class="sub sub--c">Одоо «Тоолох» таб дээр хүнээ дараад юм нэмээрэй.</p>';
+  } else if (!rows.some(r => r.p.sum)) {
     h += '<p class="sub sub--c">Бүх юм «Хамтын» болж байна. «Лог» таб дээр бүртгэлийн ' +
          'нэрэн дээр дарж хэн авсныг тэмдэглэ.</p>';
   }
@@ -1073,6 +1141,7 @@ const ACT = {
   who: el => {
     S.activePerson = el.dataset.id || null; save(); haptic(10);
     $$('#who .chip[data-pid]').forEach(c => c.classList.toggle('is-on', pidOf(c) === S.activePerson));
+    syncGrid();          /* хавтангийн тоо сонгосон хүнийх болж шүүгдэнэ */
   },
 
   /* people */
