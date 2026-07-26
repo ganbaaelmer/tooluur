@@ -33,7 +33,8 @@
 
 **Тест:** `gjs`-ээр DOM stub хийж app.js-ийг ажиллуулсан **121/121 өнгөрсөн**
 (тоолох/undo/toast-restore/хуваалт/зөрүү/localStorage round-trip/эвдэрсэн дата/
-sheet цуцлах/суулт хаах). 34 `data-act` бүрт handler байгаа cross-check хийсэн.
+sheet цуцлах/суулт хаах/keypad/үнэ засах режим/дараалсан тохиргоо/шинэ төрөл/hero).
+38 `data-act` бүрт handler байгаа, орхигдсон код үлдээгүйг cross-check хийсэн.
 
 ## Deploy ✅ — 2026-07-26-нд амьдарлаа
 
