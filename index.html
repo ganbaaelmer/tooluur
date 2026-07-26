@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="mn" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
+<title>Тооцоо — хэдэн шил?</title>
+<meta name="description" content="Бар, пабд хэдэн шил, хэдэн шот авсныг цаг хугацаатай бүртгэдэг. Нэвтрэх шаардлагагүй, офлайн ажиллана.">
+
+<meta name="theme-color" content="#0a0c10" id="metaTheme">
+<meta name="color-scheme" content="dark light">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Тооцоо">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="app">
+
+  <header class="appbar">
+    <button class="place" data-act="editPlace" aria-label="Газрын нэр">
+      <span class="place__pin" aria-hidden="true">📍</span>
+      <span class="place__name" id="placeName">Газар нэмэх</span>
+    </button>
+    <div class="appbar__meta" id="sessMeta"></div>
+  </header>
+
+  <main class="views" id="views">
+
+    <!-- ═══════════ ТООЛОХ ═══════════ -->
+    <section class="view" data-view="count">
+      <div class="hint" id="hint" hidden>
+        <p><b>Зөөгч юм тавих үед</b> тэр хавтан дээр нэг дар. Болоо. Цаг хугацаа нь өөрөө бичигдэнэ.</p>
+        <button class="hint__x" data-act="hideHint" aria-label="Хаах">✕</button>
+      </div>
+
+      <div class="who" id="who"></div>
+      <div class="grid" id="grid"></div>
+
+      <p class="tip">Хавтан дээр <b>удаан дарвал</b> үнэ, нэрийг солино.</p>
+    </section>
+
+    <!-- ═══════════ ЛОГ ═══════════ -->
+    <section class="view" data-view="log" hidden>
+      <div id="logWrap"></div>
+    </section>
+
+    <!-- ═══════════ ХУВААХ ═══════════ -->
+    <section class="view" data-view="split" hidden>
+      <div id="splitWrap"></div>
+    </section>
+
+    <!-- ═══════════ ЦЭС / ТОХИРГОО ═══════════ -->
+    <section class="view" data-view="menu" hidden>
+      <div id="menuWrap"></div>
+    </section>
+
+  </main>
+
+  <div class="totalbar" id="totalbar">
+    <div class="totalbar__num">
+      <span class="totalbar__count" id="tbCount">0</span>
+      <span class="totalbar__unit">юм</span>
+    </div>
+    <div class="totalbar__sum" id="tbSum" aria-live="polite">0₮</div>
+    <button class="undo" data-act="undo" id="undoBtn" aria-label="Сүүлчийнхийг буцаах">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h9a5 5 0 1 1 0 10H7"/><path d="M8 5 3.5 10 8 15"/></svg>
+      <span>Буцаах</span>
+    </button>
+  </div>
+
+  <nav class="tabbar" id="tabbar" role="tablist">
+    <button class="tab is-on" data-tab="count" role="tab" aria-selected="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l-1 6a4 4 0 0 1-8 0L7 3Z"/><path d="M12 13v6"/><path d="M8 21h8"/></svg>
+      <span>Тоолох</span>
+    </button>
+    <button class="tab" data-tab="log" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8.5 9h7"/><path d="M8.5 13h7"/><path d="M8.5 17h4"/></svg>
+      <span>Лог</span>
+      <b class="tab__badge" id="tabLogBadge" hidden>0</b>
+    </button>
+    <button class="tab" data-tab="split" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M5 7h14"/><circle cx="7.5" cy="14.5" r="3.5"/><circle cx="16.5" cy="14.5" r="3.5"/></svg>
+      <span>Хуваах</span>
+    </button>
+    <button class="tab" data-tab="menu" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
+      <span>Цэс</span>
+    </button>
+  </nav>
+
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet__bg" data-act="closeSheet"></div>
+  <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet__grip"></div>
+    <h2 class="sheet__title" id="sheetTitle"></h2>
+    <div class="sheet__body" id="sheetBody"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
