@@ -92,14 +92,45 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 }
 .view[data-view="menu"]{padding-bottom:calc(var(--tab-h) + var(--sa-b) + 26px)}
 
-/* ─────────── hint ─────────── */
-.hint{
-  position:relative;background:var(--card);border:1px solid var(--line);
-  border-radius:16px;padding:14px 40px 14px 16px;margin-bottom:14px;
+/* ─────────── hero ─────────── */
+.hero{padding:6px 2px 18px}
+.hero__t{
+  margin:0 0 10px;font-size:26px;line-height:1.2;font-weight:850;letter-spacing:-.5px;
 }
-.hint p{margin:0;font-size:15px;color:var(--dim)}
-.hint b{color:var(--fg)}
-.hint__x{position:absolute;top:6px;right:6px;width:34px;height:34px;color:var(--dimmer);font-size:15px}
+.hero__p{margin:0;font-size:15.5px;line-height:1.55;color:var(--dim)}
+.hero__pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+
+/* ─────────── үнэ таамаг гэсэн анхааруулга ─────────── */
+.warn{
+  position:relative;background:var(--card);border:1px solid var(--line);
+  border-left:3px solid var(--accent);
+  border-radius:16px;padding:15px 44px 15px 16px;margin-bottom:14px;
+}
+.warn__t{margin:0 0 5px;font-size:16px;font-weight:750}
+.warn__p{margin:0 0 13px;font-size:14.5px;line-height:1.5;color:var(--dim)}
+.warn__x{
+  position:absolute;top:7px;right:7px;width:34px;height:34px;
+  color:var(--dimmer);font-size:15px;border-radius:10px;
+}
+.warn__x:active{background:var(--card-hi)}
+.warn--slim{display:flex;align-items:center;padding:0 4px 0 14px;min-height:52px}
+.warn--slim .warn__x{position:static;flex:0 0 auto}
+.warn__go{
+  flex:1;text-align:left;font-size:14.5px;font-weight:600;color:var(--dim);
+  min-height:52px;padding:0;
+}
+.warn__go b{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+
+/* ─────────── үнэ засах режим ─────────── */
+.editbar{display:flex;align-items:center;gap:10px;margin-bottom:11px;min-height:40px}
+.editbar__t{flex:1;font-size:14px;font-weight:700;color:var(--accent)}
+.editbtn{
+  margin-left:auto;min-height:40px;padding:0 15px;border-radius:14px;
+  background:var(--card);border:1.5px solid var(--line);
+  font-size:14.5px;font-weight:700;color:var(--dim);
+}
+.editbtn:active{transform:scale(.95)}
+.editbtn.is-on{background:var(--accent);color:#0a0c10;border-color:var(--accent)}
 
 /* ─────────── хэн (people chips) ─────────── */
 .who{
@@ -165,7 +196,31 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 .tile.pop .tile__count{animation:pop .3s cubic-bezier(.2,.9,.3,1)}
 .tile.longing .tile__add{background:var(--card-hi);transform:scale(.97)}
 
+/* «Шинэ төрөл» хавтан */
+.tile--new .tile__add{border-style:dashed;background:none}
+.tile--new .tile__emoji{font-size:28px;color:var(--dimmer);opacity:.8}
+.tile--new .tile__name{color:var(--dim)}
+
+/* Үнэ засах режим: тоо, хасах товч нуугдаж, харандаа гарна */
+.tile__pen{
+  display:none;position:absolute;top:8px;right:9px;pointer-events:none;
+  width:40px;height:40px;border-radius:14px;
+  background:var(--accent);color:#0a0c10;font-size:20px;
+  align-items:center;justify-content:center;
+}
+.grid.is-edit .tile[data-id] .tile__pen{display:flex}
+.grid.is-edit .tile__count,
+.grid.is-edit .tile__minus{display:none}
+.grid.is-edit .tile[data-id] .tile__add{border-color:var(--accent);border-style:dashed}
+.grid.is-edit .tile[data-id] .tile__price{color:var(--accent);font-weight:700}
+.grid.is-edit .tile.has .tile__txt{padding-right:0}
+
 .tip{margin:16px 2px 0;font-size:13.5px;color:var(--dimmer);text-align:center}
+.madeby{
+  margin:22px 2px 4px;text-align:center;font-size:12.5px;color:var(--dimmer);
+  letter-spacing:.02em;
+}
+.madeby__h{color:#ff5470}
 
 /* ─────────── total bar ─────────── */
 .totalbar{
@@ -300,13 +355,44 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke
 }
 .inp:focus{outline:none;border-color:var(--accent)}
 .inp--num{text-align:center;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
-.stepper{display:flex;align-items:stretch;gap:10px}
-.stepper .inp{flex:1}
-.stepper button{
-  flex:0 0 62px;border-radius:16px;background:var(--card-hi);border:1.5px solid var(--line);
-  font-size:15px;font-weight:800;color:var(--dim);
+
+/* ─────────── үнэ бичих keypad ─────────── */
+.padval{
+  text-align:center;font-size:40px;font-weight:850;letter-spacing:-1.2px;
+  font-variant-numeric:tabular-nums;
+  padding:6px 0 14px;color:var(--accent);
+  min-height:62px;
 }
-.stepper button:active{background:var(--accent);color:#0a0c10}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
+.pad button{
+  min-height:58px;border-radius:16px;
+  background:var(--card);border:1.5px solid var(--line);
+  font-size:25px;font-weight:700;font-variant-numeric:tabular-nums;
+  transition:transform .07s,background .1s;
+}
+.pad button:active{transform:scale(.94);background:var(--accent);color:#0a0c10;border-color:var(--accent)}
+.pad button.pad--sm{font-size:18px;color:var(--dim)}
+
+/* шинэ төрөл нэмэхэд хурдан сонгох нэрс */
+.quick{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.quick button{
+  min-height:42px;padding:0 13px;border-radius:14px;
+  background:var(--card);border:1.5px solid var(--line);
+  font-size:14.5px;font-weight:650;color:var(--dim);
+}
+.quick button:active{transform:scale(.95)}
+.quick button.is-on{border-color:var(--accent);color:var(--fg);background:var(--card-hi)}
+
+/* нэр/зураг/устгах — нугалж хийсэн, үнэ нь гол */
+.more{margin-top:4px;border-top:1px solid var(--line);padding-top:10px}
+.more summary{
+  list-style:none;cursor:pointer;min-height:46px;display:flex;align-items:center;
+  justify-content:center;font-size:14.5px;font-weight:650;color:var(--dim);
+}
+.more summary::-webkit-details-marker{display:none}
+.more summary::after{content:" ▾";opacity:.6}
+.more[open] summary::after{content:" ▴"}
+.more > *:not(summary){margin-top:8px}
 
 .emorow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .emorow button{

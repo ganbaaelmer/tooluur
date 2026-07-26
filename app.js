@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '1.0.0';
+const APP_VER = '1.1.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -27,6 +27,8 @@ const nf = n => {
   return (v < 0 ? '-' : '') + String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 const money = n => nf(n) + '₮';
+/* Үнэ 0 бол «—» — зөвхөн тоо тоолохыг хүсвэл үнэ тавихгүй байж болно */
+const priceTxt = p => Number(p) ? money(p) : '—';
 const pad2 = n => String(n).padStart(2, '0');
 const timeStr = ts => { const d = new Date(ts); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
 const dateStr = ts => { const d = new Date(ts); return d.getFullYear() + '.' + pad2(d.getMonth() + 1) + '.' + pad2(d.getDate()); };
@@ -37,6 +39,14 @@ const PALETTE = ['#ffb020', '#f5d90a', '#8ab4ff', '#ff7ab8', '#c084fc',
                  '#ff6b6b', '#34d399', '#22d3ee', '#a3e635', '#fb923c'];
 const EMOJIS = ['🍺','🍻','🥃','🍸','🍹','🍷','🍾','🥂','🧉','🥤','🧃','💧',
                 '☕','🍟','🍕','🍗','🌭','🍜','🥗','🧊','🚬','🎤','🎱','🎲'];
+
+/* Шинэ юм нэмэхэд нэрийг бичихгүйгээр шууд дарах — хүмүүс өөр өөр төрлийн
+   пиво захиалдаг тул хамгийн их таардаг нэрсийг бэлэн болгосон. */
+const QUICK = [
+  ['🍺','Сэнгүр'], ['🍺','Боргио'], ['🍺','Хархорум'], ['🍺','Нийслэл'],
+  ['🍺','Tiger'], ['🍺','Heineken'], ['🍺','Corona'], ['🍺','Асахи'],
+  ['🥃','Чингис'], ['🥃','Соёмбо'], ['🍟','Хуушуур'], ['🥗','Салат']
+];
 
 /* Үндсэн цэс — үнэ нь Улаанбаатарын дундаж таамаг, тохиргоонд солино. */
 const DEFAULT_MENU = [
@@ -59,7 +69,7 @@ function fresh() {
   return {
     v: 1, menu: clone(DEFAULT_MENU), people: [], activePerson: null,
     session: blankSession(), archive: [],
-    settings: { theme: 'dark', haptics: true, hintDone: false }
+    settings: { theme: 'dark', haptics: true, pricesSet: false }
   };
 }
 function normalize(s) {
@@ -184,8 +194,10 @@ function endSession(keepPlace) {
 
 /* ───────────────────── view switching ───────────────────── */
 let view = 'count';
+let editMode = false;          /* үнэ засах режим — таб солиход өөрөө унтарна */
 function setView(v) {
   view = v;
+  editMode = false;
   $$('.view').forEach(el => { el.hidden = el.dataset.view !== v; });
   $$('.tab').forEach(el => {
     const on = el.dataset.tab === v;
@@ -221,20 +233,60 @@ function renderAppbar() {
 function renderTotalbar() {
   const n = items().length;
   $('#tbCount').textContent = n;
-  $('#tbSum').textContent = money(total());
+  $('#tbSum').textContent = (n && !total()) ? '—' : money(total());
   $('#undoBtn').disabled = n === 0;
   const b = $('#tabLogBadge');
   b.hidden = n === 0; b.textContent = n;
 }
 
 /* ── Тоолох ── */
+const HERO =
+  '<section class="hero">' +
+    '<h1 class="hero__t">Хэдэн шил уусныг хэн санана?</h1>' +
+    '<p class="hero__p">Бар санана. Тэгээд хоёр гурвыг илүү бичнэ.<br>' +
+    'Авах болгондоо доор нэг дар. Тооцоо ирэхэд тэдний дүнтэй тулгаад зөрүүг хараарай.</p>' +
+    '<div class="hero__pills">' +
+      '<span class="pill">Нэвтрэхгүй</span>' +
+      '<span class="pill">Интернетгүй ажиллана</span>' +
+      '<span class="pill">Дата зөвхөн таны утсанд</span>' +
+    '</div>' +
+  '</section>';
+
+function renderHead() {
+  let h = items().length ? '' : HERO;
+  if (!S.settings.pricesSet) {
+    h += items().length
+      ? '<div class="warn warn--slim">' +
+          '<button class="warn__go" data-act="setupPrices">⚠️ Үнэ нь таамаг — <b>тохируулах</b></button>' +
+          '<button class="warn__x" data-act="pricesOk" aria-label="Хаах">✕</button>' +
+        '</div>'
+      : '<div class="warn">' +
+          '<button class="warn__x" data-act="pricesOk" aria-label="Хаах">✕</button>' +
+          '<p class="warn__t">⚠️ Үнэ нь таамаг</p>' +
+          '<p class="warn__p">Доорх үнэ бол зүгээр нэг дундаж тоо. Барынхаараа ' +
+          'тааруулаагүй бол тооцоо ч буруу гарна. 30 секундын ажил.</p>' +
+          '<button class="btn btn--primary" data-act="setupPrices">✎ Үнээ тохируулах</button>' +
+        '</div>';
+  }
+  $('#hint').innerHTML = h;
+}
+
+function renderEditbar() {
+  $('#editbar').innerHTML = editMode
+    ? '<span class="editbar__t">Үнэ засах — хавтан дар</span>' +
+      '<button class="editbtn is-on" data-act="toggleEdit">✓ Дууслаа</button>'
+    : '<button class="editbtn" data-act="toggleEdit">✎ Үнэ засах</button>';
+}
+
 let gridSig = '';
 function renderCount() {
+  renderHead();
   renderWho();
+  renderEditbar();
   const sig = S.menu.map(m => [m.id, m.emoji, m.name, m.price, m.color].join('')).join('');
   if (sig !== gridSig) { gridSig = sig; buildGrid(); }
   syncGrid();
-  $('#hint').hidden = !!S.settings.hintDone || items().length > 0;
+  $('#grid').classList.toggle('is-edit', editMode);
 }
 function buildGrid() {
   $('#grid').innerHTML = S.menu.map(m =>
@@ -244,21 +296,33 @@ function buildGrid() {
         '<span class="tile__emoji" aria-hidden="true">' + esc(m.emoji) + '</span>' +
         '<span class="tile__txt">' +
           '<span class="tile__name">' + esc(m.name) + '</span>' +
-          '<span class="tile__price">' + money(m.price) + '</span>' +
+          '<span class="tile__price">' + priceTxt(m.price) + '</span>' +
         '</span>' +
       '</button>' +
       '<span class="tile__count" aria-hidden="true">0</span>' +
+      '<span class="tile__pen" aria-hidden="true">✎</span>' +
       '<button class="tile__minus" data-act="dec" data-id="' + esc(m.id) + '" ' +
               'aria-label="' + esc(m.name) + ' хасах">−</button>' +
     '</div>'
-  ).join('');
+  ).join('') +
+  /* Хүмүүс өөр өөр төрлийн пиво захиалдаг тул шинэ төрөл нэмэх нь
+     Цэс таб дотор нуугдалгүй, тоолж байгаа дэлгэцэн дээрээ байх ёстой. */
+  '<div class="tile tile--new">' +
+    '<button class="tile__add" data-act="newDrink" aria-label="Шинэ төрөл нэмэх">' +
+      '<span class="tile__emoji" aria-hidden="true">＋</span>' +
+      '<span class="tile__txt">' +
+        '<span class="tile__name">Шинэ төрөл</span>' +
+        '<span class="tile__price">Сэнгүр, Tiger, зууш…</span>' +
+      '</span>' +
+    '</button>' +
+  '</div>';
 }
 function syncGrid() {
-  $$('#grid .tile').forEach(t => {
+  $$('#grid .tile[data-id]').forEach(t => {
     const n = countOf(t.dataset.id);
     t.classList.toggle('has', n > 0);
     const c = $('.tile__count', t);
-    if (c.textContent !== String(n)) c.textContent = n;
+    if (c && c.textContent !== String(n)) c.textContent = n;
   });
 }
 function paint(drinkId) {
@@ -433,11 +497,14 @@ function renderMenu() {
       '<span class="emoji-lg" aria-hidden="true">' + esc(m.emoji) + '</span>' +
       '<div class="row__main"><div class="row__t">' + esc(m.name) + '</div>' +
       '<div class="row__s">' + (countOf(m.id) ? countOf(m.id) + ' авсан' : 'аваагүй') + '</div></div>' +
-      '<span class="row__v">' + money(m.price) + '</span><span class="row__x">✎</span></div>'
+      '<span class="row__v">' + priceTxt(m.price) + '</span><span class="row__x">✎</span></div>'
     ).join('') +
     '<div class="row row--tap" data-act="newDrink"><span class="emoji-lg">＋</span>' +
-    '<div class="row__main"><div class="row__t">Шинэ юм нэмэх</div>' +
-    '<div class="row__s">Хуушуур, цай, дуу — юу ч болно</div></div></div></div>';
+    '<div class="row__main"><div class="row__t">Шинэ төрөл нэмэх</div>' +
+    '<div class="row__s">Сэнгүр, Tiger, хуушуур — юу ч болно</div></div></div>' +
+    '<div class="row row--tap" data-act="setupPrices"><span class="emoji-lg">✎</span>' +
+    '<div class="row__main"><div class="row__t">Бүх үнийг дараалуулж тохируулах</div>' +
+    '<div class="row__s">Барынхаараа нэг нэгээр тааруулна</div></div></div></div>';
 
   h += '<div class="card"><div class="card__h">Хүмүүс</div>' +
     (S.people.length ? S.people.map(p =>
@@ -487,7 +554,8 @@ function renderMenu() {
   }
 
   h += '<p class="ver">Тооцоо v' + APP_VER + ' · <b>' + (navigator.onLine ? 'Онлайн' : 'Офлайн') + '</b> · ' +
-       'дата зөвхөн энэ төхөөрөмж дээр</p>';
+       'дата зөвхөн энэ төхөөрөмж дээр</p>' +
+       '<p class="madeby">Developed with <span class="madeby__h">♥</span> by Ganbaa</p>';
 
   $('#menuWrap').innerHTML = h;
 }
@@ -509,30 +577,77 @@ function closeSheet() {
   sheetCtx = null;
 }
 
-function sheetEditDrink(id) {
+/* Үнэ бичих keypad. Утасны гар биш өөрийн товчнууд — том, зум хийхгүй,
+   компьютер дээр ч ижил ажиллана. Эхний цифр дарахад хуучин үнийг дардаг
+   (калькулятор шиг) тул «цэвэрлэх» товч шаардахгүй. */
+function padHtml(price) {
+  const key = (k, txt, cls) =>
+    '<button class="' + (cls || '') + '" data-act="padKey" data-k="' + k + '">' + (txt || k) + '</button>';
+  return '<div class="padval" id="padVal">' + priceTxt(price) + '</div>' +
+    '<div class="pad">' +
+      [1,2,3,4,5,6,7,8,9].map(n => key(n)).join('') +
+      key('000', '000', 'pad--sm') + key(0) + key('del', '⌫', 'pad--sm') +
+    '</div>';
+}
+
+function sheetEditDrink(id, chain) {
   const orig = id ? S.menu.find(x => x.id === id) : null;
   if (id && !orig) return;
   const isNew = !orig;
   /* Хуулбар дээр ажиллана → sheet-ийг хаахад өөрчлөлт хүчингүй болно */
   const m = isNew
-    ? { id: uid(), emoji: '🍺', name: '', price: 10000, color: PALETTE[S.menu.length % PALETTE.length] }
+    ? { id: uid(), emoji: '🍺', name: '', price: 0, color: PALETTE[S.menu.length % PALETTE.length] }
     : clone(orig);
-  const html =
-    '<div class="emorow" id="emoRow">' + EMOJIS.map(e =>
-      '<button data-act="pickEmoji" data-v="' + e + '"' + (e === m.emoji ? ' class="is-on"' : '') + '>' + e + '</button>'
-    ).join('') + '</div>' +
+  const idx = S.menu.findIndex(x => x.id === m.id);
+  const hasNext = !!chain && idx >= 0 && idx < S.menu.length - 1;
+
+  const quick = '<div class="quick">' + QUICK.map(q =>
+    '<button data-act="quickName" data-v="' + esc(q[1]) + '" data-e="' + esc(q[0]) + '">' +
+    q[0] + ' ' + esc(q[1]) + '</button>').join('') + '</div>';
+
+  const nameBlock =
     '<div class="field"><label class="field__l" for="dName">Нэр</label>' +
-    '<input class="inp" id="dName" value="' + esc(m.name) + '" placeholder="Драфт пиво" autocomplete="off"></div>' +
-    '<div class="field"><label class="field__l" for="dPrice">Үнэ (₮)</label>' +
-    '<div class="stepper"><button data-act="priceStep" data-v="-1000">−1000</button>' +
-    '<input class="inp inp--num" id="dPrice" inputmode="numeric" autocomplete="off" value="' + nf(m.price) + '">' +
-    '<button data-act="priceStep" data-v="1000">+1000</button></div></div>' +
-    '<button class="btn btn--primary" data-act="saveDrink">Болсон</button>' +
-    (isNew ? '' :
-      '<button class="btn hold btn--danger" data-act="delDrink" data-hold="1200">Цэснээс устгах</button>' +
-      '<p class="hold__hint">Удаан дар. Бүртгэсэн түүх нь хэвээр хадгалагдана.</p>');
-  openSheet(isNew ? 'Шинэ юм' : 'Засах', html, { drink: m, isNew });
-  setTimeout(() => { if (isNew) $('#dName') && $('#dName').focus(); }, 320);
+    '<input class="inp" id="dName" value="' + esc(m.name) + '" placeholder="Сэнгүр" ' +
+    'autocomplete="off" enterkeyhint="done"></div>';
+
+  const emoBlock = '<div class="field"><span class="field__l">Зураг</span>' +
+    '<div class="emorow" id="emoRow">' + EMOJIS.map(e =>
+      '<button data-act="pickEmoji" data-v="' + e + '"' + (e === m.emoji ? ' class="is-on"' : '') + '>' +
+      e + '</button>').join('') + '</div></div>';
+
+  const actions =
+    (hasNext ? '<button class="btn btn--primary" data-act="nextDrink">Дараах →</button>' : '') +
+    '<button class="btn' + (hasNext ? '' : ' btn--primary') + '" data-act="saveDrink">' +
+      (isNew ? 'Нэмэх' : chain ? 'Дууссан' : 'Болсон') + '</button>';
+
+  const del = isNew ? '' :
+    '<button class="btn hold btn--danger" data-act="delDrink" data-hold="1200">Цэснээс устгах</button>' +
+    '<p class="hold__hint">Удаан дар. Бүртгэсэн түүх нь хэвээр хадгалагдана.</p>';
+
+  const html = isNew
+    ? '<p class="sub">Юу авав? Дарж сонго, эсвэл бичээд үнээ хий.</p>' +
+      quick + nameBlock + padHtml(m.price) + actions + emoBlock
+    : padHtml(m.price) + actions +
+      '<details class="more"><summary>Нэр, зураг, устгах</summary>' +
+      nameBlock + emoBlock + del + '</details>';
+
+  openSheet(isNew ? 'Шинэ төрөл' : m.emoji + ' ' + m.name, html,
+    { drink: m, isNew, priceStr: String(m.price || ''), padFresh: true, chain: !!chain });
+}
+
+/* sheetCtx-ийн хуулбарыг цэс руу буулгана */
+function commitDrink() {
+  if (!sheetCtx || !sheetCtx.drink) return false;
+  const m = sheetCtx.drink;
+  const nameEl = $('#dName');
+  if (nameEl) m.name = (nameEl.value || '').trim().slice(0, 28) || m.name;
+  if (!m.name) { toast('Нэрээ бичээрэй'); return false; }
+  m.price = Number(sheetCtx.priceStr || 0) || 0;
+  const t = sheetCtx.isNew ? null : S.menu.find(x => x.id === m.id);
+  if (t) Object.assign(t, m); else S.menu.push(m);
+  S.settings.pricesSet = true;
+  save();
+  return true;
 }
 
 function sheetPerson() {
@@ -652,7 +767,17 @@ function download(name, text, type) {
 /* ────────────────────────── actions map ────────────────────────── */
 const ACT = {
   /* tally */
-  add: el => addDrink(el.dataset.id),
+  add: el => {
+    if (editMode) { sheetEditDrink(el.dataset.id); return; }   /* үнэ засах режимд тоолохгүй */
+    addDrink(el.dataset.id);
+  },
+  toggleEdit: () => { editMode = !editMode; haptic(12); renderCount(); },
+  setupPrices: () => {
+    if (!S.menu.length) return;
+    editMode = true; renderCount();
+    sheetEditDrink(S.menu[0].id, true);
+  },
+  pricesOk: () => { S.settings.pricesSet = true; save(); renderHead(); },
   dec: el => removeLastOf(el.dataset.id),
   undo: () => undoLast(),
   delItem: el => removeItem(el.dataset.id),
@@ -694,20 +819,42 @@ const ACT = {
     $$('#emoRow button').forEach(b => b.classList.toggle('is-on', b === el));
     haptic(8);
   },
-  priceStep: el => {
-    const inp = $('#dPrice'); if (!inp) return;
-    const v = Math.max(0, (Number(digits(inp.value)) || 0) + Number(el.dataset.v));
-    inp.value = nf(v); haptic(8);
+  quickName: el => {
+    if (!sheetCtx || !sheetCtx.drink) return;
+    const inp = $('#dName'); if (inp) inp.value = el.dataset.v;
+    sheetCtx.drink.emoji = el.dataset.e;
+    $$('.quick button').forEach(b => b.classList.toggle('is-on', b === el));
+    $$('#emoRow button').forEach(b => b.classList.toggle('is-on', b.dataset.v === el.dataset.e));
+    haptic(10);
+  },
+  padKey: el => {
+    if (!sheetCtx) return;
+    const k = el.dataset.k;
+    let s = sheetCtx.priceStr || '';
+    if (k === 'del') { sheetCtx.padFresh = false; s = s.slice(0, -1); }
+    else {
+      if (sheetCtx.padFresh) { s = ''; sheetCtx.padFresh = false; }
+      s = (s + k).replace(/^0+(?=\d)/, '').slice(0, 9);
+    }
+    sheetCtx.priceStr = s;
+    const v = $('#padVal'); if (v) v.textContent = priceTxt(Number(s) || 0);
+    haptic(7);
   },
   saveDrink: () => {
-    if (!sheetCtx || !sheetCtx.drink) return;
-    const m = sheetCtx.drink;
-    const name = (($('#dName') && $('#dName').value) || '').trim();
-    m.name = (name || m.name || 'Юм').slice(0, 28);
-    m.price = Number(digits(($('#dPrice') && $('#dPrice').value) || '0')) || 0;
-    const t = sheetCtx.isNew ? null : S.menu.find(x => x.id === m.id);
-    if (t) Object.assign(t, m); else S.menu.push(m);
-    save(); closeSheet(); refresh();
+    if (!commitDrink()) return;
+    const done = sheetCtx && sheetCtx.chain;
+    closeSheet();
+    if (done) editMode = false;
+    refresh();
+    if (done) toast('✅ Үнэ тохирлоо');
+  },
+  nextDrink: () => {
+    if (!sheetCtx || !commitDrink()) return;
+    const cur = sheetCtx.drink.id;
+    const nx = S.menu[S.menu.findIndex(x => x.id === cur) + 1];
+    refresh();
+    if (nx) { haptic(10); sheetEditDrink(nx.id, true); }
+    else { closeSheet(); editMode = false; refresh(); toast('✅ Үнэ тохирлоо'); }
   },
   delDrink: el => {
     if (!sheetCtx || !sheetCtx.drink) return;
@@ -753,7 +900,6 @@ const ACT = {
   /* settings */
   theme: el => { S.settings.theme = el.dataset.v; save(); applyTheme(); renderMenu(); haptic(8); },
   toggleHaptics: () => { S.settings.haptics = !S.settings.haptics; save(); haptic(20); renderMenu(); },
-  hideHint: () => { S.settings.hintDone = true; save(); $('#hint').hidden = true; },
 
   /* data */
   exportJson: () => {
@@ -805,7 +951,7 @@ document.addEventListener('keydown', e => {
   const id = e.target && e.target.id;
   if (id === 'pName') ACT.savePerson();
   else if (id === 'plName') ACT.savePlace();
-  else if (id === 'dName' || id === 'dPrice') { e.target.blur(); ACT.saveDrink(); }
+  else if (id === 'dName') e.target.blur();   /* үнийг keypad-аар бичнэ */
 });
 
 /* «Барын дүн» input — фокус алдахгүйн тулд зөвхөн зөрүүг дахин зурна */
