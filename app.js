@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '2.1.0';
+const APP_VER = '2.2.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -205,10 +205,8 @@ function endSession(keepPlace) {
 
 /* ───────────────────── view switching ───────────────────── */
 let view = 'count';
-let editMode = false;          /* үнэ засах режим — таб солиход өөрөө унтарна */
 function setView(v) {
   view = v;
-  editMode = false;
   $$('.view').forEach(el => { el.hidden = el.dataset.view !== v; });
   $$('.tab').forEach(el => {
     const on = el.dataset.tab === v;
@@ -347,37 +345,25 @@ function renderHead() {
   headEmpty = !items().length;
   let h = items().length ? '' : heroHtml();
   if (!S.settings.pricesSet) {
-    h += items().length
-      ? '<div class="warn warn--slim">' +
-          '<button class="warn__go" data-act="setupPrices">⚠️ Үнэ нь таамаг — <b>тохируулах</b></button>' +
-          '<button class="warn__x" data-act="pricesOk" aria-label="Хаах">✕</button>' +
-        '</div>'
-      : '<div class="warn">' +
-          '<button class="warn__x" data-act="pricesOk" aria-label="Хаах">✕</button>' +
-          '<p class="warn__t">⚠️ Доорх үнэ бол зүгээр таамаг</p>' +
-          '<p class="warn__p">Байгаа барынхаараа тааруулчихвал тооцоо зөв гарна. ' +
-          '30 секундын ажил — нэг дараад л явчихна.</p>' +
-          '<button class="btn btn--primary" data-act="setupPrices">✎ Үнээ тохируулах</button>' +
-        '</div>';
+    h += '<div class="warn warn--slim">' +
+      '<button class="warn__go" data-act="setupPrices">⚠️ Үнэ нь таамаг — ' +
+      '<b>үнэ дээр дараад</b> засаарай</button>' +
+      '<button class="warn__x" data-act="pricesOk" aria-label="Хаах">✕</button>' +
+    '</div>';
   }
   $('#hint').innerHTML = h;
 }
 
 /* Сонгосон хэлбэр + үнэ засах товч НЭГ зурваст — хоёр мөр эзлэхгүй.
    Hero харагдаж байхад хэлбэр нь тэнд аль хэдийн байгаа тул давхардуулахгүй. */
+/* Сонгосон хэлбэрийг тоолж байхад сануулах нимгэн зурвас */
 function renderEditbar() {
-  const showMode = items().length > 0;
+  if (!items().length) { $('#editbar').innerHTML = ''; return; }
   const mode = S.session.mode === 'each'
     ? '🙋 Хүн тус бүрээр'
     : '🤝 Шэрлэх' + (headCount() ? ' · ' + headCount() + ' хүн' : '');
-  $('#editbar').innerHTML = '<div class="bar2">' +
-    (showMode
-      ? '<button class="bar2__mode" data-act="goSplit"><em>' + mode + '</em>›</button>'
-      : '<span class="bar2__mode"></span>') +
-    (editMode
-      ? '<button class="editbtn is-on" data-act="toggleEdit">✓ Дууслаа</button>'
-      : '<button class="editbtn" data-act="toggleEdit">✎ Үнэ засах</button>') +
-    '</div>';
+  $('#editbar').innerHTML =
+    '<button class="bar2__mode" data-act="goSplit"><em>' + mode + '</em>›</button>';
 }
 
 let gridSig = '';
@@ -388,34 +374,36 @@ function renderCount() {
   const sig = S.menu.map(m => [m.id, m.emoji, m.name, m.price, m.color].join('')).join('');
   if (sig !== gridSig) { gridSig = sig; buildGrid(); }
   syncGrid();
-  $('#grid').classList.toggle('is-edit', editMode);
 }
 function buildGrid() {
+  /* Хавтан 3 тусдаа даралтын талбартай:
+       · том хэсэг  → +1 (тоолох)
+       · үнэ        → үнийг ШУУД засах (тусдаа режим шаардахгүй)
+       · −          → 1 хасах (зөвхөн тоо байхад)
+     Үнэ нь жижиг, хүрээтэй, харандаатай тул тоолохоор дарж байгаа хуруу
+     оногдохоос хол — гэхдээ хажуугаар нь харагдаж, нэг товшилтоор нээгдэнэ. */
+  const hint = S.settings.pricesSet ? '' : ' is-hint';
   $('#grid').innerHTML = S.menu.map((m, k) =>
-    '<div class="tile" data-id="' + esc(m.id) + '" style="--c:' + esc(m.color) + ';--i:' + k + '">' +
+    '<div class="tile" data-id="' + esc(m.id) + '" style="--i:' + k + '">' +
       '<button class="tile__add" data-act="add" data-long="drink" data-id="' + esc(m.id) + '" ' +
               'aria-label="' + esc(m.name) + ' нэмэх">' +
         '<span class="tile__emoji" aria-hidden="true">' + esc(m.emoji) + '</span>' +
-        '<span class="tile__txt">' +
-          '<span class="tile__name">' + esc(m.name) + '</span>' +
-          '<span class="tile__price">' + priceTxt(m.price) + '</span>' +
-        '</span>' +
+        '<span class="tile__name">' + esc(m.name) + '</span>' +
       '</button>' +
       '<span class="tile__count" aria-hidden="true">0</span>' +
-      '<span class="tile__pen" aria-hidden="true">✎</span>' +
+      '<button class="tile__price' + (m.price ? '' : ' is-empty') + hint + '" ' +
+              'data-act="editDrink" data-id="' + esc(m.id) + '" ' +
+              'aria-label="' + esc(m.name) + '-ийн үнэ засах">' +
+        (m.price ? money(m.price) : 'Үнэ?') + '<i aria-hidden="true">✎</i>' +
+      '</button>' +
       '<button class="tile__minus" data-act="dec" data-id="' + esc(m.id) + '" ' +
               'aria-label="' + esc(m.name) + ' хасах">−</button>' +
     '</div>'
   ).join('') +
-  /* Хүмүүс өөр өөр төрлийн пиво захиалдаг тул шинэ төрөл нэмэх нь
-     Цэс таб дотор нуугдалгүй, тоолж байгаа дэлгэцэн дээрээ байх ёстой. */
   '<div class="tile tile--new" style="--i:' + S.menu.length + '">' +
     '<button class="tile__add" data-act="newDrink" aria-label="Шинэ төрөл нэмэх">' +
       '<span class="tile__emoji" aria-hidden="true">＋</span>' +
-      '<span class="tile__txt">' +
-        '<span class="tile__name">Шинэ төрөл</span>' +
-        '<span class="tile__price">Сэнгүр, Tiger, зууш…</span>' +
-      '</span>' +
+      '<span class="tile__name">Шинэ төрөл</span>' +
     '</button>' +
   '</div>';
 }
@@ -429,8 +417,9 @@ function syncGrid() {
 }
 function paint(drinkId) {
   syncGrid(); syncWho(); renderTotalbar();
-  /* Эхний юм нэмэгдмэгц hero нь замаас гарна (эсрэгээр нь ч мөн) */
-  if (headEmpty !== !items().length) renderHead();
+  /* Эхний юм нэмэгдмэгц hero нь замаас гарч, оронд нь хэлбэрийн зурвас
+     орно (эсрэгээр нь ч мөн). Хоёулаа хоосон/хоосон биш төлвөөс хамаарна. */
+  if (headEmpty !== !items().length) { renderHead(); renderEditbar(); }
   const t = $('#grid .tile[data-id="' + CSS.escape(drinkId) + '"]');
   if (!t) return;
   t.classList.remove('pop');
@@ -1075,16 +1064,8 @@ function download(name, text, type) {
 /* ────────────────────────── actions map ────────────────────────── */
 const ACT = {
   /* tally */
-  add: el => {
-    if (editMode) { sheetEditDrink(el.dataset.id); return; }   /* үнэ засах режимд тоолохгүй */
-    addDrink(el.dataset.id);
-  },
-  toggleEdit: () => { editMode = !editMode; haptic(12); renderCount(); },
-  setupPrices: () => {
-    if (!S.menu.length) return;
-    editMode = true; renderCount();
-    sheetEditDrink(S.menu[0].id, true);
-  },
+  add: el => addDrink(el.dataset.id),
+  setupPrices: () => { if (S.menu.length) sheetEditDrink(S.menu[0].id, true); },
   pricesOk: () => { S.settings.pricesSet = true; save(); renderHead(); },
   dec: el => removeLastOf(el.dataset.id),
   undo: () => undoLast(),
@@ -1177,7 +1158,7 @@ const ACT = {
   },
 
   /* menu editing */
-  editDrink: el => sheetEditDrink(el.dataset.id),
+  editDrink: el => sheetEditDrink(el.dataset.id, true),   /* «Дараах →»-ээр бусдыг ч засна */
   newDrink: () => sheetEditDrink(null),
   pickEmoji: el => {
     if (!sheetCtx || !sheetCtx.drink) return;
@@ -1208,11 +1189,7 @@ const ACT = {
   },
   saveDrink: () => {
     if (!commitDrink()) return;
-    const done = sheetCtx && sheetCtx.chain;
-    closeSheet();
-    if (done) editMode = false;
-    refresh();
-    if (done) toast('✅ Үнэ тохирлоо');
+    closeSheet(); refresh();
   },
   nextDrink: () => {
     if (!sheetCtx || !commitDrink()) return;
@@ -1220,7 +1197,7 @@ const ACT = {
     const nx = S.menu[S.menu.findIndex(x => x.id === cur) + 1];
     refresh();
     if (nx) { haptic(10); sheetEditDrink(nx.id, true); }
-    else { closeSheet(); editMode = false; refresh(); toast('✅ Үнэ тохирлоо'); }
+    else { closeSheet(); refresh(); toast('✅ Үнэ бүгд тохирлоо'); }
   },
   delDrink: el => {
     if (!sheetCtx || !sheetCtx.drink) return;
