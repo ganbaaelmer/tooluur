@@ -45,96 +45,60 @@ GitHub Pages дээр статикаар ажиллана, интернетгү�
 
 ---
 
-## GitHub Pages дээр гаргах
+## Deploy — одоогийн байдал
 
-### 1. Repo үүсгэж push хийх
+**Live: <https://tooluur.website>** · Repo: <https://github.com/ganbaaelmer/tooluur>
 
-```bash
-cd ~/tooluur
-git init -b main
-git add .                 # .gitignore-ийн ачаар .env ОРОХГҮЙ
-git commit -m "Тооцоо: bar tally PWA"
-git remote add origin https://github.com/<ТАНЫ-USER>/tooluur.git
-git push -u origin main
-```
+| Юу | Төлөв |
+|---|---|
+| Repo (public — үнэгүй эрхээр Pages-д шаардлагатай) | ✅ `ganbaaelmer/tooluur` |
+| Pages source | ✅ GitHub Actions (`.github/workflows/pages.yml`) |
+| Custom domain | ✅ `tooluur.website` |
+| `A @` × 4 → GitHub IP | ✅ заасан |
+| SSL (Let's Encrypt) | ✅ гарсан, **Enforce HTTPS** залгасан |
+| `CNAME www` | ⬜ **үлдсэн** — доор үз |
 
-> ⚠️ **`.env` файлыг хэзээ ч commit хийж болохгүй.** GitHub Pages бол нээлттэй сайт —
-> commit хийсэн бол хэн ч `tooluur.website/.env` гэж татаж авах боломжтой болно.
-> `.gitignore` үүнийг хааж байгаа. Хэрэв санамсаргүй push хийвэл дотор байсан
-> бүх key-г **дарууй солих** хэрэгтэй (git history-с устгасан ч хуулбар үлддэг).
-
-### 2. Pages-ыг залгах
-
-**Settings → Pages → Build and deployment → Source: `GitHub Actions`** (аль хэдийн тохируулагдсан)
-
-`.github/workflows/pages.yml` нь `main` руу push хийх болгонд өөрөө deploy хийнэ.
-Тэр workflow нь сайтад хэрэгтэй файлыг **нэрээр нь** `_site/` руу хуулдаг
-allowlist хэлбэрээр бичигдсэн — `.env`, `ARCHITECTURE 2.md`, `.claude-memory/`
-зэрэг дотоод файл web-д хэзээ ч гарахгүй.
-
-
-
-### 3. Домэйн: `tooluur.website` (Namecheap)
-
-**Namecheap → Domain List → tooluur.website → Advanced DNS**
-
-**Устга** (одоо байгаа хоёр бичлэг GitHub-тай зөрчилдөнө):
-
-| Type | Host | Value |
-|---|---|---|
-| ~~URL Redirect Record~~ | ~~@~~ | ~~http://www.tooluur.website/~~ |
-| ~~CNAME Record~~ | ~~www~~ | ~~parkingpage.namecheap.com.~~ |
-
-**Нэмэ** — `ADD NEW RECORD`, TTL нь `Automatic`:
-
-| Type | Host | Value |
-|---|---|---|
-| A Record | `@` | `185.199.108.153` |
-| A Record | `@` | `185.199.109.153` |
-| A Record | `@` | `185.199.110.153` |
-| A Record | `@` | `185.199.111.153` |
-| CNAME Record | `www` | `<ТАНЫ-USER>.github.io.` |
-
-IPv6-г хүсвэл нэмэлтээр (сонголттой):
-
-| Type | Host | Value |
-|---|---|---|
-| AAAA Record | `@` | `2606:50c0:8000::153` |
-| AAAA Record | `@` | `2606:50c0:8001::153` |
-| AAAA Record | `@` | `2606:50c0:8002::153` |
-| AAAA Record | `@` | `2606:50c0:8003::153` |
-
-### 4. GitHub дээр домэйнээ бүртгэх + SSL
-
-1. **Settings → Pages → Custom domain** → `tooluur.website` → **Save**.
-   (Repo-д `CNAME` файл аль хэдийн байгаа — GitHub үүнийг уншина.)
-2. GitHub «DNS check in progress» гэж шалгана. Namecheap-ийн DNS тархахад
-   **10–30 минут** (хааяа 1 цаг хүртэл) шаардана.
-3. Шалгалт өнгөрөнгүүт GitHub **Let's Encrypt сертификатыг өөрөө** авна.
-   Дараа нь **☑ Enforce HTTPS** товчийг дар — `http://` бүх хүсэлт `https://` болж хувирна.
-4. Дууссан. `https://tooluur.website` болон `https://www.tooluur.website`
-   (www нь apex руу автоматаар redirect болно) ажиллана.
-
-**Шалгах:**
+`main` руу push хийх болгонд Actions өөрөө deploy хийнэ — гараар юу ч дарах шаардлагагүй:
 
 ```bash
-dig +short tooluur.website          # 4 GitHub IP гарах ёстой
-dig +short www.tooluur.website      # <USER>.github.io гарах ёстой
+git add -A && git commit -m "..." && git push
 ```
 
-**Хэрэв «Enforce HTTPS» сонгох боломжгүй бол:** Custom domain-ыг устгаад,
-хадгалаад, дахин `tooluur.website` гэж бичээд Save дар — сертификат
-шинээр гаргах процесс дахин эхэлнэ. DNS зөв тархсаны дараа хийх.
+Тэр workflow нь сайтын файлыг **нэрээр нь** `_site/` руу хуулдаг allowlist хэлбэртэй.
+Тиймээс `.env`, `ARCHITECTURE 2.md`, `.claude-memory/`, `README.md` зэрэг нь web-д
+гардаггүй (шалгасан: бүгд 404).
 
-> Namecheap-ийн өөрийн PositiveSSL / Redirect-ыг **залгах шаардлагагүй**.
-> Сертификатыг GitHub үнэгүй гаргаж, өөрөө шинэчилдэг.
+> ⚠️ **`.env`-г хэзээ ч commit хийж болохгүй.** `.gitignore` хааж байгаа.
+> Санамсаргүй push хийвэл дотор байсан бүх key-г **дарууй солих** —
+> git history-с устгасан ч хуулбар үлддэг.
 
-**Домэйн хамгаалалт (сонголттой, зөвлөж байна):** GitHub → Settings → Pages →
-Custom domain-ийн доор **Verify domain**. Тэндээс өгсөн `TXT` бичлэгийг
-(`_github-pages-challenge-<USER>`) Namecheap-д нэмбэл, домэйныг өөр хүн
-өөр repo-д залгах эрсдэл хаагдана.
+### Үлдсэн нэг зүйл: `www`
 
----
+`www.tooluur.website` одоогоор заагаагүй. **Namecheap → Advanced DNS → ADD NEW RECORD:**
+
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| CNAME Record | `www` | `ganbaaelmer.github.io.` | Automatic |
+
+(Төгсгөлийн цэгтэй нь бич.) Нэмсний дараа `www` нь apex руу автоматаар redirect болно.
+Хэрэв хуучин `CNAME www → parkingpage.namecheap.com.` эсвэл `URL Redirect Record @`
+үлдсэн бол устгана — тэр хоёр GitHub-тай зөрчилдөнө.
+
+### Домэйн хулгайлагдахаас хамгаалах (зөвлөж байна)
+
+GitHub → repo → **Settings → Pages → Custom domain** доорх **Verify domain** →
+өгсөн `TXT` бичлэгийг (`_github-pages-challenge-ganbaaelmer`) Namecheap-д нэмэх.
+Ингэснээр домэйныг өөр хүн өөрийн repo-д залгах эрсдэл хаагдана.
+
+### Шалгах
+
+```bash
+dig +short tooluur.website        # 185.199.108-111.153
+dig +short www.tooluur.website    # ganbaaelmer.github.io
+```
+
+> Namecheap-ийн өөрийн PositiveSSL / URL Redirect хэрэггүй —
+> сертификатыг GitHub үнэгүй гаргаж, өөрөө шинэчилдэг.
 
 ## Локалд туршихад
 

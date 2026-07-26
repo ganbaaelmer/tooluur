@@ -58,6 +58,19 @@ React+TS+Vite+Tailwind хувилбар (бэлэн байсан сонголт)
 «Буцаах» доор үргэлж; устгал бүрт undo toast; тэглэх/хаах нь удаан дарж
 баталгаажуулна; swipe/gesture байхгүй; харанхуй default (бар харанхуй байдаг).
 
-## D-007 · Service worker стратеги
+## D-007 · Deploy: GitHub Actions (branch deploy БИШ)
+**Шийдвэр:** Pages source = `GitHub Actions`. Workflow нь сайтын файлыг **нэрээр нь**
+`_site/` руу хуулна (allowlist), дараа нь `upload-pages-artifact`.
+**Шалтгаан:** `path: .` эсвэл branch deploy хийвэл repo-гийн БҮХ файл web-д гардаг —
+`ARCHITECTURE 2.md`, `.claude-memory/`, `.gitignore` бүгд `tooluur.website/…` дээр
+уншигдана. Хамгийн гол нь: хэн нэгэн санамсаргүй secret commit хийвэл тэр даруй
+web-д serve болно. Allowlist нь тэр эрсдэлийг бүтцийн хувьд хаана.
+**Түүх:** Эхлээд token-д `workflow` scope байгаагүй тул GitHub нь
+`.github/workflows/pages.yml` push хийхийг татгалзсан → түр branch deploy-аар
+залгасан → шинэ token (`workflow` scope-той) гарсны дараа Actions руу шилжүүлсэн.
+**Шалгасан:** `/.env`, `/ARCHITECTURE 2.md`, `/.claude-memory/decisions.md`,
+`/README.md`, `/.env.example` бүгд **404**; сайтын 9 файл бүгд **200**.
+
+## D-008 · Service worker стратеги
 HTML → network-first (шинэ deploy шууд хүрнэ), asset → stale-while-revalidate.
 Дата localStorage-д тул cache цэвэрлэгдэхэд тооцоо алдагдахгүй.

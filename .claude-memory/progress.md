@@ -27,19 +27,32 @@
 (тоолох/undo/toast-restore/хуваалт/зөрүү/localStorage round-trip/эвдэрсэн дата/
 sheet цуцлах/суулт хаах). 34 `data-act` бүрт handler байгаа cross-check хийсэн.
 
+## Deploy ✅ — 2026-07-26-нд амьдарлаа
+
+**Live: <https://tooluur.website>** · <https://github.com/ganbaaelmer/tooluur> (public)
+
+| Юу | Төлөв |
+|---|---|
+| Repo + push | ✅ |
+| Pages source | ✅ GitHub Actions (run #1 success) |
+| Custom domain + A record × 4 | ✅ |
+| SSL + Enforce HTTPS | ✅ `http://` → 301 `https://` |
+| Дотоод файл web-д гарахгүй | ✅ `.env`, `ARCHITECTURE 2.md`, `.claude-memory/` → 404 |
+| `CNAME www` | ⬜ **үлдсэн** — Namecheap-д `www → ganbaaelmer.github.io.` |
+
 ## Дуусаагүй / шалгагдаагүй ⏳
 
+- **`CNAME www`** — Namecheap дээр нэмэх (README-д заавар).
+- **Домэйн verification (TXT)** — сонголттой, домэйн хулгайлагдахаас хамгаална.
 - **Хөтөч дээр нүдээрээ шалгаагүй** — Firefox нь snap учраас headless screenshot
-  ажиллаагүй. Layout-ыг зөвхөн CSS-ээр нь дүгнэсэн. `python3 -m http.server 8000`
-  гэж нэг хараах шаардлагатай.
-- **Deploy хийгдээгүй** — git repo хүртэл init хийгдээгүй. Namecheap DNS одоо
-  parkingpage + URL redirect дээр байгаа (README-д яг юу солихыг бичсэн).
-- **Стандартын зөрчил шийдэгдээгүй** — `decisions.md`-ийн D-003, D-004-ыг үз.
+  ажиллаагүй (`gotchas.md` G-004). Логик 83/83 тестээр батлагдсан ч layout-ыг
+  бодит утсан дээр нэг харах шаардлагатай.
+- **Цэсний default үнэ таамаг** — `app.js` → `DEFAULT_MENU`. Бодит барын үнээр тааруулах.
 
 ## Дараагийн алхам
 
-1. ⏳ **Хэрэглэгчийн шийдвэр:** vanilla үлдэх / React+TS+Vite+Tailwind руу шилжих /
-   бүтэн FastAPI+Postgres stack (жинхэнэ backend hosting шаардана).
-2. Secret rotate: `.env` дотор байсан `ghp_…` token + sudo пароль.
-3. Repo үүсгэж push, Pages залгах, Namecheap DNS солих, Enforce HTTPS.
-4. Цэсний default үнийг бодит барын үнээр тааруулах (одоогийнх нь таамаг).
+1. ⚠️ **Хуучин `ghp_…` token-ыг revoke хийх** (сессийн эхэнд `.env`-д plaintext
+   байсан). Шинэ token нь `.env`-д `token2_ganbaagiin_gert` нэрээр байна.
+2. `sudo_password`-ыг `.env`-с бүрмөсөн авах — системийн credential тэнд байрлах ёсгүй.
+3. `CNAME www` нэмэх.
+4. Барандаа нэг шөнө туршиж, хавтангийн хэмжээ/үнэ/дараалал таарч байгаа эсэхийг үзэх.
