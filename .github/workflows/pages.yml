@@ -27,9 +27,10 @@ jobs:
       # Ингэснээр .env, дотоод бичиг баримт зэрэг санамсаргүйгээр нээлттэй болохгүй.
       - name: Сайтын файлуудыг цуглуулах
         run: |
-          mkdir -p _site/icons
+          mkdir -p _site/icons _site/fonts
           cp index.html app.css app.js sw.js manifest.webmanifest _site/
           cp icons/icon.svg icons/*.png _site/icons/
+          cp fonts/*.woff2 _site/fonts/
           if [ -f CNAME ]; then cp CNAME _site/; fi
           touch _site/.nojekyll
           ls -laR _site

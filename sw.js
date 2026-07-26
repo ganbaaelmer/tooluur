@@ -4,7 +4,7 @@
      • бусад asset      → stale-while-revalidate (хурдан + өөрөө шинэчлэгдэнэ)
    Дата нь localStorage-д байдаг тул cache цэвэрлэгдэхэд тооцоо алдагдахгүй. */
 
-const VERSION = 'v1.3.1';
+const VERSION = 'v2.0.0';
 const CACHE = 'tooluur-' + VERSION;
 
 const ASSETS = [
@@ -17,7 +17,13 @@ const ASSETS = [
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/maskable-512.png'
+  './icons/maskable-512.png',
+  './fonts/manrope-latin.woff2',
+  './fonts/manrope-cyrillic.woff2',
+  './fonts/manrope-cyrillic-ext.woff2',
+  './fonts/prata-latin.woff2',
+  './fonts/prata-cyrillic.woff2',
+  './fonts/prata-cyrillic-ext.woff2'
 ];
 
 self.addEventListener('install', e => {

@@ -6,7 +6,10 @@
 <title>Тооцоо — хэдэн шил?</title>
 <meta name="description" content="Бар, пабд хэдэн шил, хэдэн шот авсныг цаг хугацаатай бүртгэдэг. Нэвтрэх шаардлагагүй, офлайн ажиллана.">
 
-<meta name="theme-color" content="#0a0c10" id="metaTheme">
+<meta name="theme-color" content="#0B0A09" id="metaTheme">
+<link rel="preload" href="fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/prata-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <meta name="color-scheme" content="dark light">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -36,10 +39,9 @@
       <div id="hint"></div>
 
       <div class="who" id="who"></div>
-      <div class="editbar" id="editbar"></div>
+      <div id="editbar"></div>
       <div class="grid" id="grid"></div>
 
-      <p class="tip">Үнэ засахдаа <b>✎ Үнэ засах</b> дар, эсвэл хавтан дээр <b>удаан дар</b>.</p>
       <p class="madeby">Developed with <span class="madeby__h">♥</span> by Ganbaa</p>
     </section>
 
@@ -101,7 +103,7 @@
   <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheet__grip"></div>
     <h2 class="sheet__title" id="sheetTitle"></h2>
-    <div class="sheet__body" id="sheetBody"></div>
+    <div id="sheetBody"></div>
   </div>
 </div>
 

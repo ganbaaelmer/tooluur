@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '1.3.1';
+const APP_VER = '2.0.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -333,15 +333,6 @@ let headEmpty = null;                    /* hero-г шаардлагагүйд �
 function renderHead() {
   headEmpty = !items().length;
   let h = items().length ? '' : heroHtml();
-  /* Юм тоолж эхэлсний дараа ч ямар хэлбэр сонгосон нь харагдана */
-  if (items().length) {
-    h += S.session.mode === 'each'
-      ? '<button class="modebar" data-act="goSplit">🙋 <b>Хүн тус бүрээр</b>' +
-        '<span>юм авахын өмнө хэн болохыг дар</span><i>›</i></button>'
-      : '<button class="modebar" data-act="goSplit">🤝 <b>Шэрлэх</b><span>' +
-        (headCount() ? headCount() + ' хүнд тэнцүү хуваана' : 'хэдүүлээ байгааг сонгоогүй') +
-        '</span><i>›</i></button>';
-  }
   if (!S.settings.pricesSet) {
     h += items().length
       ? '<div class="warn warn--slim">' +
@@ -359,11 +350,21 @@ function renderHead() {
   $('#hint').innerHTML = h;
 }
 
+/* Сонгосон хэлбэр + үнэ засах товч НЭГ зурваст — хоёр мөр эзлэхгүй.
+   Hero харагдаж байхад хэлбэр нь тэнд аль хэдийн байгаа тул давхардуулахгүй. */
 function renderEditbar() {
-  $('#editbar').innerHTML = editMode
-    ? '<span class="editbar__t">Үнэ засах — хавтан дар</span>' +
-      '<button class="editbtn is-on" data-act="toggleEdit">✓ Дууслаа</button>'
-    : '<button class="editbtn" data-act="toggleEdit">✎ Үнэ засах</button>';
+  const showMode = items().length > 0;
+  const mode = S.session.mode === 'each'
+    ? '🙋 Хүн тус бүрээр'
+    : '🤝 Шэрлэх' + (headCount() ? ' · ' + headCount() + ' хүн' : '');
+  $('#editbar').innerHTML = '<div class="bar2">' +
+    (showMode
+      ? '<button class="bar2__mode" data-act="goSplit"><em>' + mode + '</em>›</button>'
+      : '<span class="bar2__mode"></span>') +
+    (editMode
+      ? '<button class="editbtn is-on" data-act="toggleEdit">✓ Дууслаа</button>'
+      : '<button class="editbtn" data-act="toggleEdit">✎ Үнэ засах</button>') +
+    '</div>';
 }
 
 let gridSig = '';
@@ -1326,7 +1327,7 @@ function applyTheme() {
   document.documentElement.dataset.theme = S.settings.theme;
   const light = S.settings.theme === 'light' ||
     (S.settings.theme === 'auto' && window.matchMedia('(prefers-color-scheme: light)').matches);
-  $('#metaTheme').setAttribute('content', light ? '#f4f6fa' : '#0a0c10');
+  $('#metaTheme').setAttribute('content', light ? '#FBF8F3' : '#0B0A09');
 }
 const mqLight = window.matchMedia('(prefers-color-scheme: light)');
 if (mqLight.addEventListener) mqLight.addEventListener('change', applyTheme);
