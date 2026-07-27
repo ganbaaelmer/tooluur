@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '3.1.0';
+const APP_VER = '3.2.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -682,6 +682,13 @@ function renderMenu() {
     '<div class="row"><div class="row__main"><div class="row__t">Одоогийн тооцоо</div>' +
       '<div class="row__s">' + items().length + ' юм</div></div>' +
       '<span class="row__v">' + money(total()) + '</span></div>' +
+    '<div class="row row--tap" data-act="movePlace"><span class="emoji-lg">🏁</span>' +
+      '<div class="row__main"><div class="row__t">' +
+      (items().length ? 'Шинэ газар эхлэх' : 'Шинээр эхлэх') + '</div>' +
+      '<div class="row__s">' + (items().length
+        ? 'Одоогийнх түүхэнд хадгалагдана — юу ч устахгүй'
+        : 'Бүгд шинэчлэгдээд 0-ээс эхэлнэ') + '</div></div>' +
+      '<span class="row__v">›</span></div>' +
     '</div>';
 
   h += '<div class="card"><div class="card__h">Цэс ба үнэ</div>' +
@@ -959,16 +966,22 @@ function sheetPlace() {
     '<input class="inp" id="plName" value="' + esc(S.session.place) + '" ' +
     'placeholder="Гранд Хаан, Сүхбаатар" autocomplete="off" enterkeyhint="done"></div>' +
     '<button class="btn btn--primary" data-act="savePlace">Болсон</button>';
-  if (n) {
-    h += '<div class="rsep"></div>' +
-      '<p class="card__h card__h--free">🏁 Өөр газар нүүсэн үү?</p>' +
-      '<p class="sub">Энд <b>' + n + ' юм · ' + money(total()) + '</b> тоологдсон байна. ' +
-      'Доорхыг дарвал энэ тооцоо түүхэнд хадгалагдаад, шинэ газартаа ' +
-      'цэвэрхэн 0-ээс эхэлнэ. Юу ч устахгүй.</p>' +
-      '<button class="btn" data-act="movePlace">🏁 Шинэ газар эхлэх</button>';
-  }
+  /* Энэ хэсэг ҮРГЭЛЖ харагдана — тооцоогүй үед ч шинээр эхлэх зам байх ёстой */
+  h += '<div class="rsep"></div>' +
+    '<p class="card__h card__h--free">' +
+      (n ? '🏁 Өөр газар нүүсэн үү?' : '🔄 Шинээр эхлэх үү?') + '</p>' +
+    (n
+      ? '<p class="sub">Энд <b>' + n + ' юм · ' + money(total()) + '</b> тоологдсон байна. ' +
+        'Доорхыг дарвал энэ тооцоо түүхэнд хадгалагдаад, шинэ газартаа ' +
+        'цэвэрхэн 0-ээс эхэлнэ. Юу ч устахгүй.</p>'
+      : '<p class="sub">Газрын нэр, хүний тоо, барын дүн — бүгд шинэчлэгдээд ' +
+        '0-ээс эхэлнэ.</p>') +
+    '<button class="btn" data-act="movePlace">' +
+      (n ? '🏁 Шинэ газар эхлэх' : '🔄 Шинээр эхлэх') + '</button>';
   openSheet('Хаана байна?', h);
-  setTimeout(() => $('#plName') && $('#plName').focus(), 320);
+  /* Автофокус нь утсан дээр гар нээж доорх хэсгийг халхалдаг тул
+     зөвхөн нэр ХООСОН үед л (анхны тохиргоо) фокуслана */
+  if (!S.session.place) setTimeout(() => $('#plName') && $('#plName').focus(), 320);
 }
 
 function sheetHistory() {
@@ -1172,14 +1185,18 @@ const ACT = {
   /* Паб-хоппинг: одоогийн тооцоог түүхэнд хааж, шинэ газар 0-ээс эхэлнэ.
      Устгадаггүй (архивладаг) тул hold шаардахгүй — «Буцаах» гарцтай. */
   movePlace: () => {
-    if (!items().length) { closeSheet(); return; }
+    const had = items().length;
     const prev = (S.session.place || 'Өмнөх газар') + ' — ' +
-                 items().length + ' юм · ' + money(total());
+                 had + ' юм · ' + money(total());
     endSession(false);                      /* газрын нэр шинэ суулт руу дамжихгүй */
     haptic(20);
     openSheet('Шинэ газар 🏁',
-      '<div class="moved">✅ ' + esc(prev) + ' <b>түүхэнд хадгалагдлаа</b>' +
-      '<button data-act="unmove">Буцаах</button></div>' +
+      (had
+        /* тооцоотой байсан бол архивласан баримт + Буцаах гарц */
+        ? '<div class="moved">✅ ' + esc(prev) + ' <b>түүхэнд хадгалагдлаа</b>' +
+          '<button data-act="unmove">Буцаах</button></div>'
+        /* тооцоогүй бол хадгалах юм байгаагүй — шууд цэвэр эхлэл */
+        : '<div class="moved">🔄 Бүгд шинэчлэгдлээ — <b>0-ээс эхэлж байна</b></div>') +
       '<div class="field"><label class="field__l" for="plName">Шинэ газрын нэр</label>' +
       '<input class="inp" id="plName" placeholder="Дараагийн бар" ' +
       'autocomplete="off" enterkeyhint="done"></div>' +
