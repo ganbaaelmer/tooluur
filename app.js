@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '3.0.0';
+const APP_VER = '3.1.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -216,6 +216,7 @@ function endSession(keepPlace) {
     S.archive.unshift({
       id: s.id, startedAt: s.startedAt, endedAt: Date.now(), place: s.place,
       claimed: s.claimed, splitShared: s.splitShared,
+      mode: s.mode, heads: s.heads,      /* хуваалцах текст, буцаахад хэрэгтэй */
       items: s.items, people: clone(S.people)
     });
     if (S.archive.length > 60) S.archive.length = 60;
@@ -949,11 +950,24 @@ function sheetPerson(id) {
   }, 320);
 }
 
+/* Газрын sheet нь паб-хоппингийн гарц: нэг газраа хаагаад дараагийн газар
+   0-ээс эхлэх урсгал энд амьдардаг (📍 нэр дээр дарахад олддог). */
 function sheetPlace() {
-  openSheet('Хаана байна?',
+  const n = items().length;
+  let h =
     '<div class="field"><label class="field__l" for="plName">Газрын нэр</label>' +
-    '<input class="inp" id="plName" value="' + esc(S.session.place) + '" placeholder="Гранд Хаан, Сүхбаатар" autocomplete="off" enterkeyhint="done"></div>' +
-    '<button class="btn btn--primary" data-act="savePlace">Болсон</button>');
+    '<input class="inp" id="plName" value="' + esc(S.session.place) + '" ' +
+    'placeholder="Гранд Хаан, Сүхбаатар" autocomplete="off" enterkeyhint="done"></div>' +
+    '<button class="btn btn--primary" data-act="savePlace">Болсон</button>';
+  if (n) {
+    h += '<div class="rsep"></div>' +
+      '<p class="card__h card__h--free">🏁 Өөр газар нүүсэн үү?</p>' +
+      '<p class="sub">Энд <b>' + n + ' юм · ' + money(total()) + '</b> тоологдсон байна. ' +
+      'Доорхыг дарвал энэ тооцоо түүхэнд хадгалагдаад, шинэ газартаа ' +
+      'цэвэрхэн 0-ээс эхэлнэ. Юу ч устахгүй.</p>' +
+      '<button class="btn" data-act="movePlace">🏁 Шинэ газар эхлэх</button>';
+  }
+  openSheet('Хаана байна?', h);
   setTimeout(() => $('#plName') && $('#plName').focus(), 320);
 }
 
@@ -1154,6 +1168,36 @@ const ACT = {
   savePlace: () => {
     S.session.place = (($('#plName') && $('#plName').value) || '').trim().slice(0, 40);
     save(); closeSheet(); refresh();
+  },
+  /* Паб-хоппинг: одоогийн тооцоог түүхэнд хааж, шинэ газар 0-ээс эхэлнэ.
+     Устгадаггүй (архивладаг) тул hold шаардахгүй — «Буцаах» гарцтай. */
+  movePlace: () => {
+    if (!items().length) { closeSheet(); return; }
+    const prev = (S.session.place || 'Өмнөх газар') + ' — ' +
+                 items().length + ' юм · ' + money(total());
+    endSession(false);                      /* газрын нэр шинэ суулт руу дамжихгүй */
+    haptic(20);
+    openSheet('Шинэ газар 🏁',
+      '<div class="moved">✅ ' + esc(prev) + ' <b>түүхэнд хадгалагдлаа</b>' +
+      '<button data-act="unmove">Буцаах</button></div>' +
+      '<div class="field"><label class="field__l" for="plName">Шинэ газрын нэр</label>' +
+      '<input class="inp" id="plName" placeholder="Дараагийн бар" ' +
+      'autocomplete="off" enterkeyhint="done"></div>' +
+      '<button class="btn btn--primary" data-act="savePlace">Болсон</button>');
+    setTimeout(() => $('#plName') && $('#plName').focus(), 330);
+  },
+  unmove: () => {
+    const a = S.archive.shift();
+    if (!a) { closeSheet(); return; }
+    S.session = {
+      id: a.id, startedAt: a.startedAt, place: a.place || '',
+      items: a.items || [], claimed: Number(a.claimed) || 0,
+      mode: a.mode === 'each' ? 'each' : 'even',
+      heads: Math.max(0, Math.min(99, Math.floor(Number(a.heads) || 0))),
+      splitShared: a.splitShared !== false
+    };
+    save(); haptic(12); closeSheet(); refresh();
+    toast('Тооцоо буцаж ирлээ — үргэлжлүүлээрэй');
   },
 
   /* menu editing */
