@@ -506,7 +506,10 @@ html[data-theme="light"] .big--pay .big__l{color:var(--brass)}
 .btn + .btn{margin-top:10px}
 .btn svg{width:19px;height:19px}
 
+/* touch-action:none — утсан дээр хуруу өчүүхэн хөдлөхөд browser scroll гэж
+   ойлгож pointercancel хаяхаас сэргийлнэ (үгүй бол hold хэзээ ч дуусдаггүй) */
 .hold{
+  touch-action:none;
   background-image:linear-gradient(to right,
     var(--bad) 0%,var(--bad) calc(var(--p,0) * 100%),transparent calc(var(--p,0) * 100%));
   background-repeat:no-repeat;

@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '3.2.0';
+const APP_VER = '3.3.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -31,6 +31,12 @@ const money = n => nf(n) + '₮';
 const priceTxt = p => Number(p) ? money(p) : '—';
 const pad2 = n => String(n).padStart(2, '0');
 const timeStr = ts => { const d = new Date(ts); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+/* Түүхэнд «Өнөөдөр/Өчигдөр» гэж ойлгомжтой бичнэ */
+const dayLabel = ts => {
+  const d0 = t => { const x = new Date(t); return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(); };
+  const diff = Math.round((d0(Date.now()) - d0(ts)) / 86400000);
+  return diff === 0 ? 'Өнөөдөр' : diff === 1 ? 'Өчигдөр' : dateStr(ts);
+};
 const dateStr = ts => { const d = new Date(ts); return d.getFullYear() + '.' + pad2(d.getMonth() + 1) + '.' + pad2(d.getDate()); };
 const sum = arr => arr.reduce((a, i) => a + (Number(i.price) || 0), 0);
 const digits = s => String(s).replace(/[^\d]/g, '');
@@ -519,8 +525,8 @@ function renderResult() {
     h += '<button class="btn btn--primary" data-act="share">' +
          '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 15v4h14v-4"/></svg>' +
          'Тооцоог найзууддаа илгээх</button>';
-    h += '<button class="btn hold" data-act="endSession" data-hold="1400">Суултыг хааж хадгалах</button>' +
-         '<p class="hold__hint">Удаан дар (1.5 сек)</p>';
+    h += '<button class="btn" data-act="endSession">🏁 Суултыг хааж хадгалах</button>' +
+         '<p class="hold__hint">Түүхэнд хадгалагдана — андуурвал «Буцаах»</p>';
   }
   $('#result').innerHTML = h;
 }
@@ -989,31 +995,78 @@ function sheetHistory() {
     ? '<div class="card">' + S.archive.map(a =>
         '<div class="row row--tap" data-act="openArchive" data-id="' + esc(a.id) + '">' +
         '<div class="row__main"><div class="row__t">' + (a.place ? esc(a.place) : 'Нэргүй газар') + '</div>' +
-        '<div class="row__s">' + dateStr(a.startedAt) + ' · ' + timeStr(a.startedAt) + '–' + timeStr(a.endedAt) +
+        '<div class="row__s">' + dayLabel(a.startedAt) + ' · ' + timeStr(a.startedAt) + '–' + timeStr(a.endedAt) +
         ' · ' + a.items.length + ' юм</div></div>' +
         '<span class="row__v">' + money(sum(a.items)) + '</span><span class="row__x">›</span></div>'
-      ).join('') + '</div>'
-    : emptyBox('🗂', 'Түүх хоосон.<br>Суулт хаах үед энд хадгалагдана.');
+      ).join('') + '</div>' +
+      '<p class="sub sub--c">Суулт дээр дарвал хэн хэдийг төлснийг задалж харуулна.</p>'
+    : emptyBox('🗂', 'Түүх хоосон.<br>«Суултыг хааж хадгалах» эсвэл «Шинэ газар эхлэх»<br>дарахад суулт энд хадгалагдана.');
   openSheet('Өмнөх суултууд', html);
 }
+
+/* Суултын дэлгэрэнгүй = бүтэн баримт: хэрхэн хуваасан, юу авсан,
+   барын дүнтэй зөрсөн эсэх, цагийн бүртгэл. */
 function sheetArchive(id) {
   const a = S.archive.find(x => x.id === id);
   if (!a) return;
-  const g = groupItems(a.items);
-  const html =
-    '<div class="big"><div class="big__l">' + (a.place ? esc(a.place) : 'Нэргүй газар') + '</div>' +
-    '<div class="big__v">' + money(sum(a.items)) + '</div>' +
-    '<div class="big__s">' + dateStr(a.startedAt) + ' · ' + timeStr(a.startedAt) + '–' + timeStr(a.endedAt) +
-    ' · ' + a.items.length + ' юм</div></div>' +
-    '<div class="card">' + g.map(x =>
-      '<div class="row"><span class="emoji-lg">' + esc(x.emoji) + '</span>' +
-      '<div class="row__main"><div class="row__t">' + esc(x.name) + '</div>' +
-      '<div class="row__s">' + money(x.price) + ' × ' + x.n + '</div></div>' +
-      '<span class="row__v">' + money(x.price * x.n) + '</span></div>').join('') + '</div>' +
-    '<button class="btn btn--primary" data-act="shareArchive" data-id="' + esc(a.id) + '">Хуваалцах</button>' +
+  const t = sum(a.items);
+  const ppl = a.people || [];
+
+  let h = '<div class="big"><div class="big__l">' + (a.place ? esc(a.place) : 'Нэргүй газар') + '</div>' +
+    '<div class="big__v">' + money(t) + '</div>' +
+    '<div class="big__s">' + dayLabel(a.startedAt) + ' · ' + timeStr(a.startedAt) + '–' +
+    timeStr(a.endedAt) + ' · ' + a.items.length + ' юм</div></div>';
+
+  /* хэрхэн хуваасан */
+  if (a.mode === 'each' && ppl.length) {
+    const share = (a.splitShared !== false) ? sum(a.items.filter(i => !i.personId)) / ppl.length : 0;
+    h += '<p class="card__h card__h--free">Хэн хэдийг төлсөн</p><div class="card">' +
+      ppl.map((p, i) => {
+        const own = sum(a.items.filter(x => x.personId === p.id));
+        return '<div class="row">' +
+          '<span class="ava" style="--c:' + esc(AVA[i % AVA.length]) + '">' + esc(initial(p.name)) + '</span>' +
+          '<div class="row__main"><div class="row__t">' + esc(p.name) + '</div>' +
+          (share ? '<div class="row__s">өөрийн ' + money(own) + ' + хамтын ' + money(share) + '</div>' : '') +
+          '</div><span class="row__v">' + money(Math.round(own + share)) + '</span></div>';
+      }).join('') + '</div>';
+  } else {
+    const n = Math.max(0, Math.floor(Number(a.heads) || 0));
+    if (n > 1 && t) {
+      const each = Math.ceil((t / n) / 100) * 100;
+      h += '<div class="big big--pay"><div class="big__l">' + n + ' хүн шэрлэсэн — хүн тутамд</div>' +
+           '<div class="big__v">' + money(each) + '</div></div>';
+    }
+  }
+
+  /* юу авсан */
+  h += '<p class="card__h card__h--free">Юу авсан</p><div class="card">' +
+    groupItems(a.items).map(g =>
+      '<div class="row"><span class="emoji-lg" aria-hidden="true">' + esc(g.emoji) + '</span>' +
+      '<div class="row__main"><div class="row__t">' + esc(g.name) + '</div>' +
+      '<div class="row__s">' + money(g.price) + ' × ' + g.n + '</div></div>' +
+      '<span class="row__v">' + money(g.price * g.n) + '</span></div>').join('') + '</div>';
+
+  /* барын дүнтэй зөрсөн эсэх */
+  if (a.claimed) {
+    const d = a.claimed - t;
+    h += '<p class="sub sub--c">Барын бичсэн дүн ' + money(a.claimed) +
+      (d ? ' — зөрүү <b>' + (d > 0 ? '+' : '−') + money(Math.abs(d)) + '</b>' : ' — таарсан ✓') + '</p>';
+  }
+
+  /* цагийн бүртгэл — нугалсан */
+  h += '<details class="more"><summary>Цагийн бүртгэл</summary><div class="card">' +
+    a.items.map(i =>
+      '<div class="row"><span class="emoji-lg" aria-hidden="true">' + esc(i.emoji) + '</span>' +
+      '<div class="row__main"><div class="row__t">' + esc(i.name) + '</div>' +
+      '<div class="row__s">' + timeStr(i.ts) + (i.personName ? ' · ' + esc(i.personName) : '') + '</div></div>' +
+      '<span class="row__v">' + priceTxt(i.price) + '</span></div>').join('') +
+    '</div></details>';
+
+  h += '<button class="btn btn--primary" data-act="shareArchive" data-id="' + esc(a.id) + '">Хуваалцах</button>' +
+    '<button class="btn btn--ghost" data-act="history">‹ Бүх суултууд</button>' +
     '<button class="btn hold btn--danger" data-act="delArchive" data-id="' + esc(a.id) + '" data-hold="1400">Түүхээс устгах</button>' +
     '<p class="hold__hint">Удаан дар</p>';
-  openSheet('Суулт', html);
+  openSheet(a.place ? a.place : 'Суулт', h);
 }
 
 function sheetStale(lastTs) {
@@ -1273,11 +1326,12 @@ const ACT = {
   shareDetail: () => shareText(detailText(S.session)),
 
   /* session */
+  /* Архивладаг (устгадаггүй) тул hold биш нэг товшилт + Буцаах гарц */
   endSession: () => {
     if (!items().length) { toast('Тооцоо хоосон байна'); return; }
-    const t = money(total()), n = items().length;
+    const label = items().length + ' юм · ' + money(total());
     endSession(true);
-    toast('✅ ' + n + ' юм · ' + t + ' түүхэнд хадгалагдлаа');
+    toast('✅ ' + label + ' түүхэнд хадгалагдлаа', 'Буцаах', () => ACT.unmove());
   },
   clearSession: () => {
     if (!items().length) { toast('Аль хэдийн хоосон'); return; }
@@ -1417,6 +1471,10 @@ function holdStop(done) {
 document.addEventListener('pointerdown', e => {
   const el = hit(e.target, '[data-hold]');
   if (!el) return;
+  /* Утсан дээр хуруу өчүүхэн хөдлөхөд browser scroll гэж ойлгоод
+     pointercancel хаядаг — capture нь үйл явдлыг товчин дээр барина.
+     (CSS-ийн .hold{touch-action:none} нь scroll-оос бүрэн салгана.) */
+  if (el.setPointerCapture) { try { el.setPointerCapture(e.pointerId); } catch (err) {} }
   hold.el = el; hold.ms = Number(el.dataset.hold) || 1400; hold.t0 = performance.now();
   el.setAttribute('data-holding', '');
   const step = now => {
