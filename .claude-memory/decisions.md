@@ -71,6 +71,25 @@ web-д serve болно. Allowlist нь тэр эрсдэлийг бүтцийн
 **Шалгасан:** `/.env`, `/ARCHITECTURE 2.md`, `/.claude-memory/decisions.md`,
 `/README.md`, `/.env.example` бүгд **404**; сайтын 9 файл бүгд **200**.
 
+## D-017 · Нэг хуудас, 2 таб = 2 тооцооны хэлбэр (v3.0.0)
+**Хэрэглэгч:** «eniig engej uur page deer bailgah ni zohimjgui bas sogtuu hun
+oilgohod hetsuu baina. yur ni 1 pager bolgood 2 tabtai baimaar baina.»
+
+**Асуудал:** 4 таб (Тоолох/Лог/Хуваах/Цэс) + «хэлбэр» гэсэн тусдаа ойлголт =
+согтуу хүнд хоёр давхар навигаци. Тооцоог харахын тулд өөр хуудас руу очдог.
+
+**Шийдвэр:** Навигаци бүхэлдээ **2 таб**, таб нь ӨӨРӨӨ тооцооны хэлбэр:
+- Таб 1 «🤝 Шэрлэх», Таб 2 «🙋 Хүн тус бүрээр» (= `session.mode`)
+- **Нэг хуудас**: hero → чипс(each) → грид → тооцоо → тулгалт → илгээх → хаах.
+  Юм нэмэх болгонд доорх «Хүн тутамд»/хүн бүрийн дүн ШУУД өөрчлөгдөнө —
+  тоолох болон үр дүн нэг дэлгэцэн дээр.
+- **Лог** = totalbar-ын «N юм» товч дээрээс sheet-ээр. **Цэс** = баруун дээд ☰.
+- `renderResult()` нь paint() бүрт дуудагдана — амьд тоолуур.
+- Лог/Цэс sheet нээлттэй үед refresh() тэднийг ч шинэчилнэ (guard-тай).
+
+Устгасан: setView/view, renderSplit, renderEditbar, modeCardsHtml, hero-ийн
+setup хэсэг, modesw, goSplit/goCount — навигацийн ойлголт 1 давхарга боллоо.
+
 ## D-016 · «Хэн хэдийг төлөх» нь ГОЛ дэлгэц дээрээ байх (v2.3.0)
 **Хэрэглэгч:** «hun tus bureer uyed daraa ni yaj hen hediig tulhuu yaj harhiin be?
 salgaagui bugdiig ni niiluultsen yum shig baina.»

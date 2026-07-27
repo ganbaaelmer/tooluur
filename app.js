@@ -11,7 +11,7 @@
 'use strict';
 
 const KEY = 'tooluur.v1';
-const APP_VER = '2.4.0';
+const APP_VER = '3.0.0';
 
 /* ─────────────────────────── utils ─────────────────────────── */
 const $  = (s, r = document) => r.querySelector(s);
@@ -225,30 +225,27 @@ function endSession(keepPlace) {
   save(); refresh();
 }
 
-/* ───────────────────── view switching ───────────────────── */
-let view = 'count';
-function setView(v) {
-  view = v;
-  $$('.view').forEach(el => { el.hidden = el.dataset.view !== v; });
-  $$('.tab').forEach(el => {
-    const on = el.dataset.tab === v;
-    el.classList.toggle('is-on', on);
-    el.setAttribute('aria-selected', on ? 'true' : 'false');
+/* ───────────────────── 2 таб = 2 хэлбэр ───────────────────── */
+function renderTabs() {
+  const m = S.session.mode === 'each' ? 'each' : 'even';
+  $$('#tabbar .tab').forEach(t => {
+    const on = t.dataset.v === m;
+    t.classList.toggle('is-on', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
   });
-  $('#totalbar').hidden = (v === 'menu');
-  $('#views').scrollTop = 0;
-  window.scrollTo(0, 0);
-  refresh();
 }
 
 /* ───────────────────────── render ───────────────────────── */
 function refresh() {
   renderAppbar();
+  renderTabs();
   renderTotalbar();
-  if (view === 'count') renderCount();
-  else if (view === 'log') renderLog();
-  else if (view === 'split') renderSplit();
-  else renderMenu();
+  renderHead();
+  renderWho();
+  renderGrid();
+  renderResult();
+  renderLog();     /* лог sheet нээлттэй үед л зурагдана (доторх guard) */
+  renderMenu();    /* цэс sheet мөн адил */
 }
 
 function renderAppbar() {
@@ -271,8 +268,6 @@ function renderTotalbar() {
   $('#tbCount').textContent = n;
   el.textContent = (n && !t) ? '—' : money(t);
   $('#undoBtn').disabled = n === 0;
-  const b = $('#tabLogBadge');
-  b.hidden = n === 0; b.textContent = n;
 
   const from = sumShown;
   sumShown = t;
@@ -293,25 +288,7 @@ function renderTotalbar() {
 }
 
 /* ── Тоолох ── */
-/* Хоёр төлбөрийн хэлбэрийг сонгох карт — hero болон «Хуваах» таб хоёуланд
-   ижил компонентоор гарна. Карт бол ЖИНХЭНЭ товч: дарвал хэлбэр солигдоно.
-   (v1.2-д зөвхөн зураг байсан тул дарахад юу ч болдоггүй байв.) */
-function modeCardsHtml() {
-  const m = S.session.mode === 'each' ? 'each' : 'even';
-  const card = (v, e, t, s) =>
-    '<button class="way' + (m === v ? ' is-on' : '') + '" data-act="setMode" data-v="' + v + '">' +
-      '<span class="way__e">' + e + '</span>' +
-      '<span class="way__t">' + t + '</span>' +
-      '<span class="way__s">' + s + '</span>' +
-      '<span class="way__tick">✓</span>' +
-    '</button>';
-  return '<div class="ways">' +
-    card('even', '🤝', 'Шэрлэх', 'Нийт дүнг хүний тоонд тэнцүү хуваана') +
-    card('each', '🙋', 'Хүн тус бүрээр', 'Хэн юу авсныг тусад нь тооцно') +
-  '</div>';
-}
-
-/* Хэдүүлээ байгааг нэг товшилтоор — hero болон «Хуваах» таб хоёуланд */
+/* Хэдүүлээ байгааг нэг товшилтоор сонгоно (Шэрлэх табын тооцоонд) */
 function headsPickHtml() {
   const n = headCount();
   let h = '<div class="heads">' +
@@ -330,35 +307,15 @@ function headsPickHtml() {
   return h;
 }
 
+/* Хэлбэр сонгох карт байхгүй болсон — доод хоёр таб нь ӨӨРӨӨ хэлбэр */
 function heroHtml() {
-  const even = S.session.mode !== 'each';
   return '<section class="hero">' +
     '<h1 class="hero__t">Юу захиалж авснаа<br>мартдаг шүүдээ 🍻</h1>' +
-    '<p class="hero__p">Бар, пабд сууж байхад юу авсан нь мартагддаг. ' +
-      'Захиалга ирэх болгонд <b>доорхоос нэг дараад л яв</b> — хялбархан бүртгэгдээд ' +
-      'байна. Дахиж тооцоо дээр толгой өвдөхгүй.</p>' +
-    '<p class="hero__lead">Доорх 2 төрлөөр тооцоогоо бодож болно:</p>' +
-    modeCardsHtml() +
-    (even
-      ? '<div class="setup"><span class="setup__l">Хэдүүлээ байна?</span>' +
-        headsPickHtml() +
-        (headCount() ? '<p class="setup__ok">✓ ' + headCount() +
-            ' хүнд тэнцүү хуваана. Одоо тоолж эхэл.</p>'
-          : '<p class="setup__s">Одоо дарж болно, дараа ч болно.</p>') +
-        '</div>'
-      : '<div class="setup"><span class="setup__l">Хэн хэн байна?</span>' +
-        (S.people.length
-          ? '<div class="pchips">' + S.people.map(p =>
-              '<span class="pchip pchip--ro"><span class="pchip__a" style="--c:' +
-              esc(avaColor(p.id)) + '">' + esc(initial(p.name)) + '</span>' +
-              esc(p.name) + '</span>').join('') + '</div>' +
-            '<p class="setup__s">Юм авахын өмнө <b>хэн болохыг дар</b>. Мартсан ч болно — ' +
-            '«Лог» таб дээрээс дараа нь тэмдэглэж болно.</p>'
-          : '<p class="setup__s">Нэр нэмээд л явцгаая. Бичсэн нэрийг санаж авах тул ' +
-            'дараагийн удаа дарахад л болно.</p>') +
-        '<button class="btn' + (S.people.length ? '' : ' btn--primary') +
-        '" data-act="addPerson">＋ Хүн нэмэх</button>' +
-        '</div>') +
+    '<p class="hero__p">Захиалга ирэх болгонд <b>доорхоос нэг дар</b> — цаг хугацаатайгаа ' +
+    'бүртгэгдээд, тооцоо нь гридийн доор шууд бодогдоно.</p>' +
+    '<p class="hero__p hero__p--mt">Доод талын <b>хоёр таб</b> нь тооцооны хэлбэр: ' +
+    '<b>🤝 Шэрлэх</b> — нийт дүнг хүний тоонд тэнцүү хуваана. ' +
+    '<b>🙋 Хүн тус бүрээр</b> — хэн юу авсныг тусад нь тооцно.</p>' +
   '</section>';
 }
 
@@ -378,32 +335,9 @@ function renderHead() {
 
 /* Сонгосон хэлбэр + үнэ засах товч НЭГ зурваст — хоёр мөр эзлэхгүй.
    Hero харагдаж байхад хэлбэр нь тэнд аль хэдийн байгаа тул давхардуулахгүй. */
-/* Хэлбэрийг ӨӨР ХУУДАС РУУ ОРОХГҮЙГЭЭР тэр дороо солино.
-   Өмнө нь «🙋 Хүн тус бүрээр ›» гэсэн жижиг холбоос байсан — хаашаа авч
-   оддог нь тодорхойгүй, буцаж ирэх нь ч тодорхойгүй байсан. */
-function renderEditbar() {
-  if (!items().length) { $('#editbar').innerHTML = ''; return; }
-  const m = S.session.mode === 'each' ? 'each' : 'even';
-  const sub = m === 'even'
-    ? (headCount() ? headCount() + ' хүнд' : 'хэдүүлээ?')
-    : S.people.length + ' хүн';
-  $('#editbar').innerHTML =
-    '<div class="modesw">' +
-      '<button data-act="setMode" data-v="even"' + (m === 'even' ? ' class="is-on"' : '') + '>' +
-        '🤝 Шэрлэх</button>' +
-      '<button data-act="setMode" data-v="each"' + (m === 'each' ? ' class="is-on"' : '') + '>' +
-        '🙋 Хүн тус бүрээр</button>' +
-      '<button class="modesw__go" data-act="goSplit" aria-label="Тооцоо харах">' +
-        sub + ' ›</button>' +
-    '</div>';
-}
-
 let gridSig = '';
-function renderCount() {
-  renderHead();
-  renderWho();
-  renderEditbar();
-  const sig = S.menu.map(m => [m.id, m.emoji, m.name, m.price, m.color].join('')).join('');
+function renderGrid() {
+  const sig = S.menu.map(m => [m.id, m.emoji, m.name, m.price, m.color].join('')).join('');
   if (sig !== gridSig) { gridSig = sig; buildGrid(); }
   syncGrid();
 }
@@ -455,9 +389,8 @@ function syncGrid() {
 }
 function paint(drinkId) {
   syncGrid(); syncWho(); renderTotalbar();
-  /* Эхний юм нэмэгдмэгц hero нь замаас гарч, оронд нь хэлбэрийн зурвас
-     орно (эсрэгээр нь ч мөн). Хоёулаа хоосон/хоосон биш төлвөөс хамаарна. */
-  if (headEmpty !== !items().length) { renderHead(); renderEditbar(); }
+  renderResult();                 /* доорх «хүн тутамд» дүн нэмэх болгонд шинэчлэгдэнэ */
+  if (headEmpty !== !items().length) renderHead();
   const t = $('#grid .tile[data-id="' + CSS.escape(drinkId) + '"]');
   if (!t) return;
   t.classList.remove('pop');
@@ -498,6 +431,7 @@ function syncWho() {
 
 /* ── Лог ── */
 function renderLog() {
+  if (!$('#logWrap')) return;        /* лог sheet хаалттай */
   const its = items();
   if (!its.length) {
     $('#logWrap').innerHTML = emptyBox('🧾', 'Бүртгэл хоосон.<br>«Тоолох» таб дээр юм нэмэхэд<br>цаг хугацаатайгаа энд бичигдэнэ.');
@@ -562,47 +496,32 @@ function headCount() {
   return h > 0 ? h : 0;
 }
 
-function renderSplit() {
+/* ── Тооцооны хэсэг — гридийн ДООР, нэг хуудсан дээр ── */
+function claimedHtml() {
+  return '<div class="card"><div class="card__h">Барын тооцоотой тулгах</div><div class="card__b">' +
+    '<div class="field"><label class="field__l" for="claimed">Тэдний бичсэн дүн</label>' +
+    '<input class="inp inp--num" id="claimed" inputmode="numeric" autocomplete="off" ' +
+    'placeholder="0" value="' + (S.session.claimed ? nf(S.session.claimed) : '') + '"></div>' +
+    '<div id="diffBox">' + diffHtml() + '</div></div></div>';
+}
+
+function renderResult() {
   const n = items().length;
   const t = total();
   const mode = S.session.mode === 'each' ? 'each' : 'even';
-  let h = '';
-
+  let h = '<div class="rsep" aria-hidden="true"></div>';
+  h += mode === 'even'
+    ? '<p class="card__h card__h--free">Тооцоо</p>' + splitEvenHtml(t, n)
+    : splitEachHtml(n);
   if (n) {
-    h += '<div class="big big--hero"><div class="big__l">Нийт</div>' +
-         '<div class="big__v">' + (t ? money(t) : '—') + '</div>' +
-         '<div class="big__s">' + n + ' юм · ' + timeStr(S.session.startedAt) + '–' +
-         timeStr(items()[n - 1].ts) + '</div></div>';
-  } else {
-    h += '<div class="big big--hero"><div class="big__l">Нийт</div>' +
-         '<div class="big__v dimmer">0₮</div>' +
-         '<div class="big__s">Юм тоолоогүй байна — доор тохируулаад ор</div></div>';
-  }
-
-  /* Хэлбэр сонгох нь ҮРГЭЛЖ харагдана (юм тоолоогүй ч) */
-  h += '<p class="card__h card__h--free">Тооцоог хэрхэн бодох вэ?</p>';
-  h += modeCardsHtml();
-
-  h += mode === 'even' ? splitEvenHtml(t, n) : splitEachHtml(n);
-
-  if (n) {
-    h += '<div class="card"><div class="card__h">Барын тооцоотой тулгах</div><div class="card__b">' +
-         '<div class="field"><label class="field__l" for="claimed">Тэдний бичсэн дүн</label>' +
-         '<input class="inp inp--num" id="claimed" inputmode="numeric" autocomplete="off" ' +
-         'placeholder="0" value="' + (S.session.claimed ? nf(S.session.claimed) : '') + '"></div>' +
-         '<div id="diffBox">' + diffHtml() + '</div></div></div>';
-
+    h += claimedHtml();
     h += '<button class="btn btn--primary" data-act="share">' +
          '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 15v4h14v-4"/></svg>' +
          'Тооцоог найзууддаа илгээх</button>';
-    h += '<button class="btn btn--ghost" data-act="goCount">‹ Тоолох руу буцах</button>';
     h += '<button class="btn hold" data-act="endSession" data-hold="1400">Суултыг хааж хадгалах</button>' +
          '<p class="hold__hint">Удаан дар (1.5 сек)</p>';
-  } else {
-    h += '<button class="btn btn--primary" data-act="goCount">🍺 Тоолж эхлэх</button>';
   }
-
-  $('#splitWrap').innerHTML = h;
+  $('#result').innerHTML = h;
 }
 
 /* ── 1. Шэрлэх ── */
@@ -638,7 +557,8 @@ function splitEvenHtml(t, n) {
 function splitEachHtml(n) {
   const d = splitData();
   if (!d.heads) {
-    return '<div class="card"><div class="card__b">' +
+    return '<p class="card__h card__h--free">Хэн хэдийг төлөх</p>' +
+      '<div class="card"><div class="card__b">' +
       '<p class="sub">Хэн хэн байгааг нэмээд, юм авахын өмнө хэн болохыг дараарай. ' +
       'Мартсан ч болно — «Лог» таб дээрээс дараа нь хуваарилж болно.</p>' +
       '<button class="btn btn--primary" data-act="addPerson">＋ Хүн нэмэх</button></div></div>';
@@ -750,6 +670,7 @@ function groupItems(its) {
 
 /* ── Цэс / тохиргоо ── */
 function renderMenu() {
+  if (!$('#menuWrap')) return;       /* цэс sheet хаалттай */
   let h = '';
 
   h += '<div class="card"><div class="card__h">Суулт</div>' +
@@ -927,6 +848,10 @@ function commitDrink() {
   save();
   return true;
 }
+
+/* Лог ба Цэс — тусдаа хуудас БИШ, доороос гарах sheet */
+function sheetLog() { openSheet('Цагийн лог', '<div id="logWrap"></div>'); renderLog(); }
+function sheetMenu() { openSheet('Цэс', '<div id="menuWrap"></div>'); renderMenu(); }
 
 /* Хүн нэмэх — нэрийг бичээд Enter дарахад ШУУД нэмэгдэж, гар хаагдалгүй
    дараагийнхыг бичиж болно. 3 найзыг нэмэхэд 3 удаа модал онгойлгож хаах
@@ -1194,30 +1119,25 @@ const ACT = {
   /* хуваах хэлбэр */
   setMode: el => {
     const v = el.dataset.v === 'each' ? 'each' : 'even';
+    const changed = S.session.mode !== v;
     S.session.mode = v;
-    /* Шэрлэх үед хүний зурвас нуугддаг тул сонголт нь үзэгдэхгүй хэвээр
-       үлдэж, юм нь нэг хүн дээр далд бичигдэхээс сэргийлнэ. */
+    /* Шэрлэх үед хүний зурвас нуугддаг тул сонголт үзэгдэхгүй үлдэж,
+       юм нэг хүн дээр далд бичигдэхээс сэргийлнэ. */
     if (v === 'even') S.activePerson = null;
-    /* Хэн ч сонгогдоогүй бол товшилт «Хамтын» болж хэлбэр нь утгагүй болно */
     if (v === 'each' && !S.activePerson && S.people.length) S.activePerson = S.people[0].id;
-    save(); haptic(14); refresh();
-    if (v === 'each' && !S.people.length) { sheetPeople(); return; }
-    toast(v === 'even'
-      ? '🤝 Шэрлэх — хэдүүлээ байгааг дараарай'
-      : '🙋 Хүн тус бүрээр — юм авахын өмнө хэнийг дар');
+    if (changed) { save(); haptic(12); refresh(); }
+    if (v === 'each' && !S.people.length) sheetPeople();
   },
   setHeads: el => {
     S.session.heads = Math.max(0, Math.min(99, Number(el.dataset.v) || 0));
-    save(); haptic(14);
-    if (view === 'count') renderHead(); else renderSplit();
+    save(); haptic(14); renderResult();
   },
   headsStep: el => {
     S.session.heads = Math.max(0, Math.min(99, headCount() + Number(el.dataset.v)));
-    save(); haptic(10);
-    if (view === 'count') renderHead(); else renderSplit();
+    save(); haptic(10); renderResult();
   },
-  goSplit: () => setView('split'),
-  goCount: () => setView('count'),
+  openLog: () => sheetLog(),
+  openMenu: () => sheetMenu(),
   /* Лог дээр нэр дарахад дараагийн хүн болно — модалгүй, нэг товшилт */
   cyclePerson: el => {
     const it = items().find(i => i.id === el.dataset.id);
@@ -1226,8 +1146,7 @@ const ACT = {
     const nx = order[(order.indexOf(it.personId || null) + 1) % order.length];
     it.personId = nx;
     it.personName = nx ? ((personById(nx) || {}).name || null) : null;
-    save(); haptic(10);
-    renderLog(); renderTotalbar();
+    save(); haptic(10); refresh();
   },
 
   /* place */
@@ -1288,7 +1207,7 @@ const ACT = {
   },
 
   /* split */
-  toggleSplit: () => { S.session.splitShared = !S.session.splitShared; save(); haptic(10); renderSplit(); },
+  toggleSplit: () => { S.session.splitShared = !S.session.splitShared; save(); haptic(10); refresh(); },
   share: () => shareText(summaryText(S.session, S.people)),
   shareDetail: () => shareText(detailText(S.session)),
 
@@ -1298,7 +1217,6 @@ const ACT = {
     const t = money(total()), n = items().length;
     endSession(true);
     toast('✅ ' + n + ' юм · ' + t + ' түүхэнд хадгалагдлаа');
-    setView('count');
   },
   clearSession: () => {
     if (!items().length) { toast('Аль хэдийн хоосон'); return; }
@@ -1364,7 +1282,7 @@ document.addEventListener('click', e => {
 
 $('#tabbar').addEventListener('click', e => {
   const t = hit(e.target, '.tab');
-  if (t) { haptic(8); setView(t.dataset.tab); }
+  if (t) ACT.setMode(t);
 });
 
 /* Enter → submit (sheet-үүд) */
@@ -1487,7 +1405,7 @@ else if (mqLight.addListener) mqLight.addListener(applyTheme);   /* хуучин
 let installPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault(); installPrompt = e;
-  if (view === 'menu') renderMenu();
+  renderMenu();
 });
 window.addEventListener('appinstalled', () => { installPrompt = null; toast('📲 Апп нэмэгдлээ'); });
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -1507,8 +1425,8 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
   });
 }
-window.addEventListener('online', () => { if (view === 'menu') renderMenu(); });
-window.addEventListener('offline', () => { if (view === 'menu') renderMenu(); });
+window.addEventListener('online', () => { renderMenu(); });
+window.addEventListener('offline', () => { renderMenu(); });
 
 /* ── өөр таб дээр өөрчлөгдвөл дагаж шинэчлэх ── */
 window.addEventListener('storage', e => {
@@ -1522,7 +1440,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) rend
 
 /* ── boot ── */
 applyTheme();
-setView('count');
+refresh();
 (function checkStale() {
   const its = items();
   if (!its.length) return;

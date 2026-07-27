@@ -129,7 +129,7 @@ button{border:0;background:none;padding:0;cursor:pointer;touch-action:manipulati
 svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 
 /* ── нийтлэг: жижиг том үсгийн шошго ── */
-.card__h,.big__l,.field__l,.setup__l{
+.card__h,.big__l,.field__l{
   font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
   color:var(--dimmer);
 }
@@ -149,7 +149,14 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
   background:linear-gradient(var(--bg) 72%,transparent);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
 }
-.place{display:flex;align-items:center;gap:8px;min-height:34px;max-width:64%;border-radius:10px}
+.place{display:flex;align-items:center;gap:8px;min-height:34px;max-width:46%;border-radius:10px}
+.iconbtn{
+  flex:0 0 auto;width:40px;height:40px;border-radius:13px;
+  border:1px solid var(--line);color:var(--dim);
+  display:flex;align-items:center;justify-content:center;
+}
+.iconbtn svg{width:19px;height:19px}
+.iconbtn:active{background:var(--card-hi)}
 .place:active{opacity:.55}
 .place__pin{font-size:13px;line-height:1;opacity:.75}
 .place__name{
@@ -162,9 +169,7 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
   color:var(--dimmer);text-align:right;line-height:1.5;font-variant-numeric:tabular-nums;
 }
 
-.views{flex:1;min-height:0}
 .view{padding:6px var(--pad) calc(var(--tab-h) + var(--bar-h) + var(--sa-b) + 28px)}
-.view[data-view="menu"]{padding-bottom:calc(var(--tab-h) + var(--sa-b) + 32px)}
 
 /* ═══════════════ hero ═══════════════ */
 .hero{padding:12px 0 22px}
@@ -175,45 +180,10 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 }
 .hero__p{margin:0;font-size:15px;line-height:1.65;color:var(--dim);font-weight:500}
 .hero__p b{color:var(--fg);font-weight:700}
-.hero__lead{
-  margin:24px 0 12px;
-  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer);
-}
+.hero__p--mt{margin-top:11px}
 
-/* ── хоёр хэлбэрийн сонголт (ЖИНХЭНЭ товч) ── */
-.ways{display:grid;gap:10px;margin-bottom:16px}
-@media (min-width:470px){.ways{grid-template-columns:1fr 1fr}}
-.way{
-  position:relative;text-align:left;
-  display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
-  gap:4px 13px;align-items:center;
-  background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
-  padding:17px 46px 17px 17px;
-  transition:transform .13s var(--ease),border-color .2s,background .2s;
-}
-.way:active{transform:scale(.985)}
-.way__e{grid-row:1/3;font-size:23px;line-height:1;opacity:.9}
-.way__t{font-size:16px;font-weight:800;letter-spacing:-.01em}
-.way__s{font-size:13px;font-weight:500;color:var(--dim);line-height:1.45}
-.way__tick{
-  position:absolute;top:50%;right:17px;transform:translateY(-50%);
-  font-size:15px;font-weight:800;color:var(--brass);
-  opacity:0;transition:opacity .2s;
-}
-.way.is-on{border-color:var(--brass);background:var(--brass-soft)}
-.way.is-on .way__t{color:var(--brass)}
-.way.is-on .way__s{color:var(--dim)}
-.way.is-on .way__tick{opacity:1}
-
-/* ── hero дотрох тохируулга ── */
-.setup{border-top:1px solid var(--line-2);padding-top:18px}
-.setup__l{display:block;margin-bottom:12px}
-.setup__s{margin:14px 0 0;font-size:13.5px;line-height:1.6;color:var(--dim)}
-.setup__s b{color:var(--fg);font-weight:700}
-.setup__ok{
-  margin:14px 0 0;font-size:14px;font-weight:700;color:var(--brass);
-  display:flex;align-items:center;gap:7px;
-}
+/* тооцооны хэсгийг гридээс тусгаарлах зураас */
+.rsep{border-top:1px solid var(--line-2);margin:22px 0 16px}
 
 /* ── «Үнэ таамаг» анхааруулга ── */
 .warn{
@@ -236,28 +206,6 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
   font-size:13.5px;font-weight:600;color:var(--dim);
 }
 .warn__go b{color:var(--brass);font-weight:800}
-
-/* ── хэлбэр солих: тэр дороо, хуудас солихгүйгээр ── */
-.modesw{
-  display:flex;align-items:stretch;gap:4px;margin-bottom:13px;
-  background:var(--bg-soft);border:1px solid var(--line);
-  border-radius:15px;padding:4px;
-}
-.modesw > button{
-  flex:1;min-width:0;min-height:40px;border-radius:11px;
-  font-size:12.5px;font-weight:700;color:var(--dim);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  transition:background .2s,color .2s;
-}
-.modesw > button.is-on{background:var(--brass);color:#100D0A}
-.modesw > button:active{opacity:.75}
-.modesw__go{
-  flex:0 0 auto !important;padding:0 12px;
-  color:var(--dimmer) !important;font-size:11.5px !important;
-  border-left:1px solid var(--line);border-radius:0 !important;
-  font-variant-numeric:tabular-nums;
-}
-.modesw__go:active{color:var(--brass) !important}
 
 /* ═══════════════ хүний зурвас ═══════════════ */
 .who{
@@ -386,7 +334,13 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
 }
 .totalbar[hidden]{display:none}
-.totalbar__num{display:flex;align-items:baseline;gap:5px;min-width:52px}
+.totalbar__log{
+  flex:0 0 auto;display:flex;align-items:baseline;gap:6px;
+  min-height:46px;padding:0 12px 0 10px;margin-left:-10px;border-radius:14px;
+  transition:background .16s;
+}
+.totalbar__log:active{background:var(--card-hi)}
+.totalbar__log svg{width:14px;height:14px;color:var(--dimmer);align-self:center}
 .totalbar__count{
   font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.03em;
 }
@@ -407,45 +361,27 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .undo:disabled{opacity:.3}
 .undo svg{width:17px;height:17px}
 
-/* ═══════════════ табын зурвас ═══════════════ */
-/* v2.0-д хэтэрхий бүдэг болгосон нь алдаа байсан — энэ бол аппын ГОЛ
-   навигаци, хаана байгаа/хаашаа явахыг хэлж байх ёстой. */
+/* ═══════════════ 2 таб = 2 тооцооны хэлбэр ═══════════════ */
 .tabbar{
   position:fixed;left:0;right:0;bottom:0;z-index:26;
   max-width:600px;margin:0 auto;
   height:calc(var(--tab-h) + var(--sa-b));
-  padding:0 var(--sa-r) var(--sa-b) var(--sa-l);
-  display:grid;grid-template-columns:repeat(4,1fr);
+  padding:7px calc(10px + var(--sa-r)) calc(7px + var(--sa-b)) calc(10px + var(--sa-l));
+  display:grid;grid-template-columns:repeat(2,1fr);gap:7px;
   background:var(--bg-soft);
   border-top:1px solid var(--line);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
 }
 .tab{
-  position:relative;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  color:var(--dim);
-  font-size:10.5px;font-weight:700;letter-spacing:.04em;
-  transition:color .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  border-radius:14px;border:1px solid transparent;
+  font-size:13.5px;font-weight:750;letter-spacing:-.01em;color:var(--dim);
+  white-space:nowrap;overflow:hidden;
+  transition:background .2s,color .2s,border-color .2s;
 }
-.tab::before{                       /* сонгогдсоныг гуулин талбайгаар тэмдэглэнэ */
-  content:'';position:absolute;top:5px;bottom:5px;left:50%;
-  width:66px;margin-left:-33px;border-radius:15px;
-  background:transparent;transition:background .22s var(--ease);
-}
-.tab svg,.tab span{position:relative;z-index:1}
-.tab.is-on{color:var(--brass)}
-.tab.is-on::before{background:var(--brass-soft)}
-.tab:active{opacity:.6}
-.tab svg{width:23px;height:23px;stroke-width:1.8}
-.tab.is-on svg{stroke-width:2.1}
-.tab__badge{
-  position:absolute;top:3px;right:calc(50% - 27px);z-index:2;
-  min-width:17px;height:17px;padding:0 4px;border-radius:9px;
-  background:var(--brass);color:#100D0A;
-  font-size:10px;font-weight:800;letter-spacing:0;
-  display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;
-  box-shadow:0 0 0 2px var(--bg-soft);
-}
+.tab__e{font-size:17px;line-height:1}
+.tab.is-on{background:var(--brass-soft);color:var(--brass);border-color:rgba(217,169,78,.4)}
+.tab:active{opacity:.65}
 
 /* ═══════════════ карт ба мөр ═══════════════ */
 .card{
@@ -548,9 +484,6 @@ svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke
 .big__s{font-size:12.5px;font-weight:500;color:var(--dim);margin-top:10px;line-height:1.55}
 .big--ok .big__v{color:var(--ok)}
 .big--bad .big__v{color:var(--bad)}
-.big--hero{background:none;border:0;border-bottom:1px solid var(--line-2);border-radius:0;
-  padding:8px 0 22px;margin-bottom:20px}
-.big--hero .big__v{font-size:36px}
 .big--pay{border-color:var(--brass);background:var(--brass-soft);padding:30px 20px}
 .big--pay .big__v{color:var(--brass);font-size:52px}
 .big--pay .big__l{color:var(--brass-2)}
@@ -633,8 +566,6 @@ html[data-theme="light"] .big--pay .big__l{color:var(--brass)}
 .pchip:active{transform:scale(.95);border-color:var(--bad)}
 .pchip i{font-style:normal;font-size:11px;color:var(--dimmer);margin-left:2px}
 .pchip:active i{color:var(--bad)}
-.pchip--ro{padding:0 13px 0 4px}
-.pchip--ro:active{transform:none;border-color:var(--line)}
 .pchip__a{
   width:32px;height:32px;border-radius:50%;background:var(--c);color:#100D0A;
   display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;
